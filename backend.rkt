@@ -14,3 +14,5 @@
 (define (il-to-asm filename)
   (let ([in (open-input-file filename)])
     (translate-stream in)))
+
+(translate-stream (current-input-port))

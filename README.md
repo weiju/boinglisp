@@ -10,3 +10,8 @@ The language set supported is a subset of Scheme, sufficient to
 run the examples in "Little Schemer" and to write a compiler to
 generate machine code for a target architecture.
 
+
+# Run compilation
+
+racket run_compiler.rkt <input> | racket backend.rkt
+
