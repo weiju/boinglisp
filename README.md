@@ -1,4 +1,4 @@
-# Chibi Lisp
+# Boing Lisp
 
 ## Description
 
