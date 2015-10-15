@@ -11,5 +11,5 @@ clean:
 	rm -f runtime *.o
 
 
-runtime: runtime.o
-	vlink $(VLINK_FLAGS) -o $@ -s $<
+runtime: runtime.o linkme.o
+	vlink $(VLINK_FLAGS) -o $@ -s $?

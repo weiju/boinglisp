@@ -11,7 +11,8 @@ start:
 	    tst.l	d0
 	    beq.s	nodos
 	    move.l	d0,a6
-	    lea	msg(pc),a0
+        xref    GREETING
+        lea     GREETING(pc),a0
 	    moveq	#-1,d3
 	    move.l	a0,d2
 strlen:
@@ -25,13 +26,11 @@ strlen:
 	    move.l	ABSEXECBASE.w,a6
         JSRLIB  CloseLibrary
 nodos:
-	moveq	#0,d0
-  	jsr	dummy
-	rts
+	    moveq	#0,d0
+  	    jsr	dummy
+	    rts
 
 dummy:	rts
 
 dosname:
-	dc.b	'dos.library',0
-msg:
-	dc.b	'Hello, world!',10,0
+	    dc.b	'dos.library',0
