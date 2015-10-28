@@ -65,16 +65,20 @@
          (process-args (drop-right args 1) state)]))
 
 ;; management procedure for literal and template slot space
+;; TODO: very obviously, this is not exactly what we need, instead,
+;; we need to emit code to do this in the emitted current frame
 (define (register-literal state literal)
   (let* ([tstate (cstate-curr-templ state)]
          [curr-slot (length (tmpstate-slots tstate))])
     ;; TODO: allocate a reference and put the reference to the literal
     ;; into the slots list
+    (printf ";; literal: '~a'~n" literal)
     (cond [(string? literal)
            (set-tmpstate-slots! tstate (cons (string-append "s-"
                                                            (~a (length (tmpstate-slits tstate))))
                                              (tmpstate-slots tstate)))
-           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))]
+           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))
+           (printf "  (register-string-literal '~a')~n" literal)]
           [else
            (set-tmpstate-slots! tstate (cons (string-append "i-"
                                                             (~a (length (tmpstate-ilits tstate)))) 

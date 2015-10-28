@@ -1,3 +1,3 @@
         xdef    GREETING
 GREETING:
-	    dc.b	'Hello, Lisp!',10,0
+	    dc.b	'Hello, Lisp (extern) !',10,0
