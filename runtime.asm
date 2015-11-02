@@ -31,10 +31,7 @@ cleanup:
         JSRLIB  CloseLibrary
 nodos:
 	    moveq	#0,d0
-  	    jsr	dummy
 	    rts
-
-dummy:	rts
 
 dosbase:
         dc.l    0
