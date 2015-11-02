@@ -21,10 +21,8 @@ init:
         rts
 
 print_greeting:
-        lea     int_greeting,a0
-        PRINT_STR
-        lea     ext_greeting,a0
-        PRINT_STR
+        PRINT_ADDR   int_greeting
+        PRINT_ADDR   ext_greeting
         rts
 
 cleanup:

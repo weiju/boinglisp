@@ -6,7 +6,7 @@ RUNTIME_MACROS_I    SET     1
         ;; a0: pointer to the string (0-terminated)
         ;; return value: length of string in d0
         ;; uses registers a0,a1,d0,d1,d2,d3
-STRLEN  MACRO
+STRLEN_A0   MACRO
 	    moveq	#-1,d0
 strlen_loop\@:
 	    addq.l	#1,d0
@@ -14,12 +14,13 @@ strlen_loop\@:
 	    bne.s	strlen_loop\@
         ENDM
 
-        ;; print_str
+        ;; prints the specified address
         ;; prints 0-terminated string
-        ;; a0: pointer to string
-PRINT_STR   MACRO
+        ;; param 1: label to the string
+PRINT_ADDR   MACRO
+        lea     \1,a0
         move.l  a0,a1           ; save string pointer
-        STRLEN
+        STRLEN_A0
         move.l  d0,d3
         ;; note that a0 has been incremented by STRLEN
         ;; restore the string address
