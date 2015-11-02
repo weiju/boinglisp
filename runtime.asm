@@ -21,7 +21,9 @@ init:
         rts
 
 print_greeting:
-        lea     magreeting,a0
+        lea     int_greeting,a0
+        PRINT_STR
+        lea     ext_greeting,a0
         PRINT_STR
         rts
 
@@ -38,5 +40,5 @@ dosbase:
 dosname:
 	    dc.b	'dos.library',0
 
-magreeting:
+int_greeting:
 	    dc.b	'Hello, Lisp (internal) !',10,0
