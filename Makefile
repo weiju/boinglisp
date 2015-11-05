@@ -3,12 +3,15 @@ VLINK_FLAGS = -L/home/weiju/local/vbcc/targets/m68k-amigaos/lib -bamigahunk -lam
 ASM = vasmm68k_mot
 .SUFFIXES : .o .asm
 
-all: main
+all: main test
 
 .asm.o:
 	$(ASM) $(ASM_FLAGS) -o $@ $<
 clean:
-	rm -f main *.o
+	rm -f main test *.o
 
 main: main.o runtime.o
+	vlink $(VLINK_FLAGS) -o $@ -s $^
+
+test: test.o runtime.o
 	vlink $(VLINK_FLAGS) -o $@ -s $^

@@ -7,7 +7,6 @@ start:
         bsr     init_runtime
 	    tst.l	d0
         beq.s   error
-        bsr     print_greeting
         bsr     print_nil
         bsr     cleanup_runtime
 
