@@ -1,7 +1,7 @@
         ;; This is the BoingLisp runtime module
         ;; Every compiled Lisp program uses functions out of this
         ;; module
-        xdef    init_runtime,cleanup_runtime,print_nil,nil_str,quote,print_str
+        xdef    init_runtime,cleanup_runtime,nil_str,quote,print_str
 
 ABSEXECBASE		EQU	4
 
@@ -33,16 +33,15 @@ print_greeting:
         rts
 
 print_str:
-        ;; dummy: get param from stack:
-        move.l  (a7)+,a0
-        PRINT_ADDR  nil_str
-        rts
-
-print_nil:
-        PRINT_ADDR  nil_str
+        ;; Parameter is 4 bytes after return address
+        move.l  4(a7),a0
+        PRINT_A0
         rts
 
 quote:
+        ;; TODO: quote calls should be optimized by the compiler
+        ;; to nothing, it's actually a no-op
+        move.l  4(a7),a0
         rts
 
         ;; Predefined values of length multiples of 4

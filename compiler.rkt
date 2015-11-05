@@ -7,6 +7,19 @@
 ;; 2. run on the Lisp interpreter
 ;; 3. compile in compiler
 
+;; --------------------------
+;; TODO:
+;; -----
+;; 1. integrate literal registration
+;; database with unique labels for literals
+;; literals are printed in a separate section
+;; e.g.
+;; (string-literal sl-0 "string 1")
+;; (int-literal il-0 123)
+;; ...
+;; ---------------------------
+
+
 ;; currently the only public procedure is
 ;; compile-file
 ;; it supports the parameter output-format which can be "plain" or "sexp"

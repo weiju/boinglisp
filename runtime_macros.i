@@ -17,8 +17,8 @@ strlen_loop\@:
         ;; prints the specified address
         ;; prints 0-terminated string
         ;; param 1: label to the string
-PRINT_ADDR   MACRO
-        lea     \1,a0
+
+PRINT_A0   MACRO
         move.l  a0,a1           ; save string pointer
         STRLEN_A0
         move.l  d0,d3
@@ -30,6 +30,11 @@ PRINT_ADDR   MACRO
         JSRLIB  Output
 	    move.l	d0,d1
         JSRLIB  Write
+        ENDM
+
+PRINT_ADDR   MACRO
+        lea     \1,a0
+        PRINT_A0
         ENDM
 
         ENDC                    ; RUNTIME_MACROS_I
