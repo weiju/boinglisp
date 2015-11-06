@@ -22,9 +22,7 @@
 
 ;; currently the only public procedure is
 ;; compile-file
-;; it supports the parameter output-format which can be "plain" or "sexp"
-(provide compile-file output-format)
-(define output-format (make-parameter "sexp"))
+(provide compile-file)
 
 ;; state of a template
 ;; slots the literal slots
@@ -49,25 +47,12 @@
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
-(define (emit-push-param)
-  (cond [(eq? (output-format) "sexp") (printf "  (push)~n")]
-        [else (printf "  push~n")]))
-(define (emit-fetch-literal rval)
-  (cond [(eq? (output-format) "sexp") (printf "  (fetch-literal ~a)~n" (as-literal rval))]
-        [else (printf "  fetch-literal ~a~n" (as-literal rval))]))
-(define (emit-fetch-nil)
-  (cond [(eq? (output-format) "sexp") (printf "  (fetch-nil)~n")]
-        [else (printf "  fetch-nil~n")]))
-(define (emit-call fun)
-  (cond [(eq? (output-format) "sexp") (printf "  (lookup-variable ~a)~n  (apply)~n" fun)]
-        [else (printf "  lookup-variable ~a~n  apply~n" fun)]))
-(define (emit-lookup-variable varname)
-  (cond [(eq? (output-format) "sexp") (printf "  (lookup-variable ~a)~n" varname)]
-        [else (printf "  lookup-variable ~a~n" varname)]))
-
-(define (emit-println)
-  (cond [(eq? (output-format) "sexp") (printf "  (push)~n  (lookup-variable println)~n  (apply)~n")]
-        [else (printf "  push~n  lookup-variable println~n  apply~n")]))
+(define (emit-push-param) (printf "  (push)~n"))
+(define (emit-fetch-literal rval) (printf "  (fetch-literal ~a)~n" (as-literal rval)))
+(define (emit-fetch-nil) (printf "  (fetch-nil)~n"))
+(define (emit-call fun) (printf "  (lookup-variable ~a)~n  (apply)~n" fun))
+(define (emit-lookup-variable varname) (printf "  (lookup-variable ~a)~n" varname))
+(define (emit-println) (printf "  (push)~n  (lookup-variable println)~n  (apply)~n"))
 
 ;; process function arguments right-to-left
 (define (process-args args state)
@@ -128,7 +113,7 @@
 
 ;; compiling a file
 (define (compile-file filename)
-  (printf ";; compiling file: \"~a\", format: ~a~n" filename (output-format))
+  (printf ";; compiling file: \"~a\"~n" filename)
   (let ([in (open-input-file filename)]
         [compiler-state (cstate 0 (tmpstate '() '() '() '()))])
     (compile-stream 1 compiler-state in)
