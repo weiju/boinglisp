@@ -76,7 +76,7 @@
                                                            (~a (length (tmpstate-slits tstate))))
                                              (tmpstate-slots tstate)))
            (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))
-           (printf "  (register-string-literal '~a')~n" literal)]
+           ]
           [else
            (set-tmpstate-slots! tstate (cons (string-append "i-"
                                                             (~a (length (tmpstate-ilits tstate)))) 
@@ -101,6 +101,12 @@
             (process-args (cdr sexp) state)
             (emit-call fun))]))
 
+;; ----------------------------------------------------
+;; Top-level calls
+;;
+;; These are the starting points, the top-level input
+;; goes in here as well as the initialized compiler state
+;; ----------------------------------------------------
 ;; compile an s-expression (top-level)
 (define (compile-stream sexp-num compiler-state in)
   (let ([sexp (read in)])
