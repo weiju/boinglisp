@@ -26,10 +26,8 @@
 
 ;; state of a template
 ;; slots the literal slots
-;; code the code of the template
 ;; slits string literals
-;; ilits int literals
-(struct tmpstate (slots code slits ilits) #:mutable #:transparent)
+(struct tmpstate (slots slits) #:mutable #:transparent)
 
 ;; manage the compile state in this object
 ;; lcount is the current label counter
@@ -63,25 +61,17 @@
          (process-args (drop-right args 1) state)]))
 
 ;; management procedure for literal and template slot space
-;; TODO: very obviously, this is not exactly what we need, instead,
-;; we need to emit code to do this in the emitted current frame
 (define (register-literal state literal)
   (let* ([tstate (cstate-curr-templ state)]
          [curr-slot (length (tmpstate-slots tstate))])
-    ;; TODO: allocate a reference and put the reference to the literal
+    ;; allocate a reference and put the reference to the literal
     ;; into the slots list
     (printf ";; literal: '~a'~n" literal)
     (cond [(string? literal)
            (set-tmpstate-slots! tstate (cons (string-append "s-"
                                                            (~a (length (tmpstate-slits tstate))))
                                              (tmpstate-slots tstate)))
-           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))
-           ]
-          [else
-           (set-tmpstate-slots! tstate (cons (string-append "i-"
-                                                            (~a (length (tmpstate-ilits tstate)))) 
-                                             (tmpstate-slots tstate)))
-           (set-tmpstate-ilits! tstate (cons literal (tmpstate-ilits tstate)))])
+           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))])
     (printf ";; ~a~n" state)
     curr-slot))
 
@@ -93,8 +83,6 @@
      (cond [(symbol? sexp)
             (emit-lookup-variable sexp)]
            [else
-            ;; TODO: register literal for current function's template frame
-            ;; and emit the offset
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]
     [else (let ([fun (car sexp)])
@@ -121,6 +109,6 @@
 (define (compile-file filename)
   (printf ";; compiling file: \"~a\"~n" filename)
   (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (tmpstate '() '() '() '()))])
+        [compiler-state (cstate 0 (tmpstate '() '()))])
     (compile-stream 1 compiler-state in)
     (close-input-port in)))
