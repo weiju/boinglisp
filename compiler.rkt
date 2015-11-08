@@ -46,7 +46,13 @@
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
 (define (emit-push-param) (printf "  (push)~n"))
-(define (emit-fetch-literal rval) (printf "  (fetch-literal ~a)~n" (as-literal rval)))
+;; integer literals are treated specially: for most part we assume that
+;; they fit into a Lisp value (e.g. into a car or cdr of a cons cell)
+;; so we don't store them in the static data section for now
+(define (emit-fetch-literal spec)
+  (cond [(eq? 'string-literal (car spec))
+         (printf "  (fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
+        [else (printf "  (fetch-int-literal ~a)~n" (cadr spec))]))
 (define (emit-fetch-nil) (printf "  (fetch-nil)~n"))
 (define (emit-call fun) (printf "  (lookup-variable ~a)~n  (apply)~n" fun))
 (define (emit-lookup-variable varname) (printf "  (lookup-variable ~a)~n" varname))
@@ -66,14 +72,14 @@
          [curr-slot (length (tmpstate-slots tstate))])
     ;; allocate a reference and put the reference to the literal
     ;; into the slots list
-    (printf ";; literal: '~a'~n" literal)
     (cond [(string? literal)
            (set-tmpstate-slots! tstate (cons (string-append "s-"
                                                            (~a (length (tmpstate-slits tstate))))
                                              (tmpstate-slots tstate)))
-           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))])
-    (printf ";; ~a~n" state)
-    curr-slot))
+           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))
+           (printf ";; ~a~n" state)
+           (list 'string-literal curr-slot)]
+          [else (list 'int-literal literal)])))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
