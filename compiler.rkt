@@ -26,13 +26,13 @@
 
 ;; state of a template
 ;; slots the literal slots
-;; slits string literals
-(struct tmpstate (slots slits) #:mutable #:transparent)
+(struct tmpstate (slots) #:mutable #:transparent)
 
 ;; manage the compile state in this object
 ;; lcount is the current label counter
-;; tcount is the current template slot counter
-(struct cstate (lcount curr-templ) #:mutable #:transparent)
+;; slitvals is a hash table (label -> literal)
+;; curr-templ current template data item
+(struct cstate (lcount slitvals curr-templ) #:mutable #:transparent)
 
 (define (atom? x) (not (or (pair? x) (null? x))))
 
@@ -73,12 +73,11 @@
     ;; allocate a reference and put the reference to the literal
     ;; into the slots list
     (cond [(string? literal)
-           (set-tmpstate-slots! tstate (cons (string-append "s-"
-                                                           (~a (length (tmpstate-slits tstate))))
-                                             (tmpstate-slots tstate)))
-           (set-tmpstate-slits! tstate (cons literal (tmpstate-slits tstate)))
-           (printf ";; ~a~n" state)
-           (list 'string-literal curr-slot)]
+           (let ([litlabel (string-append "s-" (~a (hash-count (cstate-slitvals state))))])
+             (hash-set! (cstate-slitvals state) litlabel literal)
+             (set-tmpstate-slots! tstate (cons litlabel (tmpstate-slots tstate)))
+             (printf ";; ~a~n" state)
+             (list 'string-literal curr-slot))]
           [else (list 'int-literal literal)])))
 
 ;; compile expression (recursive)
@@ -115,6 +114,6 @@
 (define (compile-file filename)
   (printf ";; compiling file: \"~a\"~n" filename)
   (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (tmpstate '() '()))])
+        [compiler-state (cstate 0 (make-hash) (tmpstate '()))])
     (compile-stream 1 compiler-state in)
     (close-input-port in)))
