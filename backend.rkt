@@ -20,7 +20,7 @@
 
 (define (lookup-variable varname)
   (cond [(eq? varname 'quote) (printf "\tlea\tquote,a0~n")]
-        [(eq? varname 'println) (printf "\tlea\tprint_str,a0~n")]
+        [(eq? varname 'println) (printf "\tlea\tprintln,a0~n")]
         [(eq? varname 'print) (printf "\tlea\tprint_str,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 

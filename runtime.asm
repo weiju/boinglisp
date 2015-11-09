@@ -1,7 +1,7 @@
         ;; This is the BoingLisp runtime module
         ;; Every compiled Lisp program uses functions out of this
         ;; module
-        xdef    init_runtime,cleanup_runtime,nil_str,quote,print_str
+        xdef    init_runtime,cleanup_runtime,nil_str,quote,print_str,println
 
 ABSEXECBASE		EQU	4
 
@@ -32,9 +32,18 @@ print_greeting:
         PRINT_ADDR   greeting
         rts
 
+        ;; A simple output function that expects the address of the string
+        ;; to print as the first argument (on top of the stack)
 print_str:
         ;; Parameter is 4 bytes after return address
         move.l  4(a7),a0
+        PRINT_A0
+        rts
+
+println:
+        move.l  4(a7),a0
+        PRINT_A0
+        lea     line_feed,a0
         PRINT_A0
         rts
 
@@ -59,4 +68,6 @@ dosname:
 greeting:
 	    dc.b	'Boing Lisp Version 0.001 (c) 2015',10,0
 nil_str:
-        dc.b    "'()",10,0
+        dc.b    "'()"
+line_feed:
+        dc.b    10,0
