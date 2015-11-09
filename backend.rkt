@@ -12,6 +12,7 @@
 
 (define (print-epilogue)
   (printf "~n\t;; Epilogue Start~n")
+  (printf "epilogue:~n")
   (printf "\tbsr\tcleanup_runtime~n")
   (printf "error:~n")
   (printf "\tmoveq\t#0,d0~n")
@@ -20,6 +21,7 @@
 (define (lookup-variable varname)
   (cond [(eq? varname 'quote) (printf "\tlea\tquote,a0~n")]
         [(eq? varname 'println) (printf "\tlea\tprint_str,a0~n")]
+        [(eq? varname 'print) (printf "\tlea\tprint_str,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 
 (define (translate-instr instr)
@@ -36,6 +38,14 @@
           [(equal? code 'lookup-variable)
            (let ([varname (cadr instr)])
              (lookup-variable varname))]
+          [(equal? code 'string-literal)
+           (let ([litname (cadr instr)]
+                 [litval (caddr instr)])
+             (printf "~a:\tdc.b\t\"~a\",0~n" litname litval))]
+          [(equal? code 'fetch-str-literal)
+           (printf "\tlea\t~a,a0~n" (cadr instr))]
+          [(equal? code 'end-program)
+           (printf "\tbra\tepilogue~n~n")]
           [else (printf "~a~n" instr)])))
 
 (define (translate-stream in)

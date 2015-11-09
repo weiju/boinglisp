@@ -24,15 +24,11 @@
 ;; compile-file
 (provide compile-file)
 
-;; state of a template
-;; slots the literal slots
-(struct tmpstate (slots) #:mutable #:transparent)
-
 ;; manage the compile state in this object
 ;; lcount is the current label counter
 ;; slitvals is a hash table (label -> literal)
 ;; curr-templ current template data item
-(struct cstate (lcount slitvals curr-templ) #:mutable #:transparent)
+(struct cstate (lcount slitvals) #:mutable #:transparent)
 
 (define (atom? x) (not (or (pair? x) (null? x))))
 
@@ -45,18 +41,24 @@
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
-(define (emit-push-param) (printf "  (push)~n"))
+(define (emit-push-param) (printf "(push)~n"))
 ;; integer literals are treated specially: for most part we assume that
 ;; they fit into a Lisp value (e.g. into a car or cdr of a cons cell)
 ;; so we don't store them in the static data section for now
 (define (emit-fetch-literal spec)
   (cond [(eq? 'string-literal (car spec))
-         (printf "  (fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
-        [else (printf "  (fetch-int-literal ~a)~n" (cadr spec))]))
-(define (emit-fetch-nil) (printf "  (fetch-nil)~n"))
-(define (emit-call fun) (printf "  (lookup-variable ~a)~n  (apply)~n" fun))
-(define (emit-lookup-variable varname) (printf "  (lookup-variable ~a)~n" varname))
-(define (emit-println) (printf "  (push)~n  (lookup-variable println)~n  (apply)~n"))
+         (printf "(fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
+        [else (printf "(fetch-int-literal ~a)~n" (cadr spec))]))
+(define (emit-fetch-nil) (printf "(fetch-nil)~n"))
+(define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
+(define (emit-lookup-variable varname) (printf "(lookup-variable ~a)~n" varname))
+(define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
+
+(define (emit-literals compiler-state)
+  (let [(sliterals (cstate-slitvals compiler-state))]
+    (printf ";; literals follow here (TODO)~n")
+    (hash-for-each sliterals (lambda (key value)
+                               (printf "(string-literal ~a \"~a\")~n" key value)))))
 
 ;; process function arguments right-to-left
 (define (process-args args state)
@@ -68,17 +70,14 @@
 
 ;; management procedure for literal and template slot space
 (define (register-literal state literal)
-  (let* ([tstate (cstate-curr-templ state)]
-         [curr-slot (length (tmpstate-slots tstate))])
-    ;; allocate a reference and put the reference to the literal
-    ;; into the slots list
-    (cond [(string? literal)
-           (let ([litlabel (string-append "s-" (~a (hash-count (cstate-slitvals state))))])
-             (hash-set! (cstate-slitvals state) litlabel literal)
-             (set-tmpstate-slots! tstate (cons litlabel (tmpstate-slots tstate)))
-             (printf ";; ~a~n" state)
-             (list 'string-literal curr-slot))]
-          [else (list 'int-literal literal)])))
+  ;; allocate a reference and put the reference to the literal
+  ;; into the slots list
+  (cond [(string? literal)
+         (let ([litlabel (string-append "s" (~a (hash-count (cstate-slitvals state))))])
+           (hash-set! (cstate-slitvals state) litlabel literal)
+           (printf ";; ~a~n" state)
+           (list 'string-literal litlabel))]
+        [else (list 'int-literal literal)]))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
@@ -103,7 +102,9 @@
 ;; compile an s-expression (top-level)
 (define (compile-stream sexp-num compiler-state in)
   (let ([sexp (read in)])
-    (cond [(eof-object? sexp) #t]
+    (cond [(eof-object? sexp)
+           (printf "(end-program)~n")
+           (emit-literals compiler-state)]
           [else
            (printf ";; sexp ~a~n" sexp-num)
            (compile-exp sexp compiler-state)
@@ -114,6 +115,6 @@
 (define (compile-file filename)
   (printf ";; compiling file: \"~a\"~n" filename)
   (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (make-hash) (tmpstate '()))])
+        [compiler-state (cstate 0 (make-hash))])
     (compile-stream 1 compiler-state in)
     (close-input-port in)))
