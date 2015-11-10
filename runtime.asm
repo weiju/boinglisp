@@ -36,9 +36,10 @@ print_greeting:
 add_int:
         ;; Currently, this only adds 2 values, TODO: add arbitrary number
         ;; Parameter is 4 bytes after return address
-        ;; a0 :=  sum(parameters) 
+        ;; a0 :=  sum(parameters)
         move.l  4(a7),d0
         move.l  8(a7),d0
+        move.l  12(a7),d1
         asr.l   #1,d0
         asr.l   #1,d1
         add.l   d0,d1

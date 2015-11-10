@@ -6,6 +6,7 @@
 ;;   - integers (fixnum) are 31 bits and have their LSB set to 1
 ;;   - all other values have their LSB set to 0, currently this is
 ;;     - string pointer
+;; TODO: Use arity information to adjust stack
 (define (print-prologue)
   (printf "\t;; Prologue Start~n")
   (printf "\tINCLUDE \"runtime_macros.i\"~n")
@@ -30,42 +31,46 @@
         [(eq? varname '+) (printf "\tlea\tadd_int,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 
-(define (translate-instr instr)
+(define (translate-instr arg-count instr)
   (let ([code (car instr)])
-    (cond [(equal? code 'fetch-nil) (printf "\tlea\tnil_str,a0~n")]
-          ;; pushing a parameter should increment the parameter counter
-          ;; we actually need to remember how many parameters are on the
-          ;; stack, because the caller needs to remove the params
-          [(equal? code 'push) (printf "\tmove.l\ta0,-(a7)~n")]
-          ;; TODO: this is a kludge, as a proof of princible,
-          ;; we need to add the (4*number of parameters) bytes to the
-          ;; stack to restore the state
-          [(equal? code 'apply) (printf "\tjsr\t(a0)~n\taddq.l\t#4,a7~n")]
-          [(equal? code 'lookup-variable)
-           (let ([varname (cadr instr)])
-             (lookup-variable varname))]
-          [(equal? code 'string-literal)
-           (let ([litname (cadr instr)]
-                 [litval (caddr instr)])
-             (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
-          [(equal? code 'fetch-str-literal)
-           (printf "\tlea\t~a,a0~n" (cadr instr))]
-          [(equal? code 'fetch-int-literal)
-           (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n\tmove.l\td0,a0~n" (cadr instr))]
-          [(equal? code 'end-program)
-           (printf "\tbra\tepilogue~n~n")]
-          [else (printf "~a~n" instr)])))
+    ;; pushing a parameter should increment the parameter counter
+    ;; we actually need to remember how many parameters are on the
+    ;; stack, because the caller needs to remove the params
+    (cond [(equal? code 'push) (printf "\tmove.l\ta0,-(a7)~n") (+ arg-count 1)]
+          [(cond [(equal? code 'fetch-nil) (printf "\tlea\tnil_str,a0~n")]
+                 ;; for a procedure call we push the parameters and then the
+                 ;; number of parameters on the stack before we branch
+                 ;; to the subroutine.
+                 ;; After return we need to add the (4*(number of parameters+1))
+                 ;; bytes to the stack pointer to restore the state
+                 [(equal? code 'apply)
+                  (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
+                  (printf "\tjsr\t(a0)~n")
+                  (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4))]
+                 [(equal? code 'lookup-variable)
+                  (let ([varname (cadr instr)])
+                    (lookup-variable varname))]
+                 [(equal? code 'string-literal)
+                  (let ([litname (cadr instr)]
+                        [litval (caddr instr)])
+                    (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
+                 [(equal? code 'fetch-str-literal)
+                  (printf "\tlea\t~a,a0~n" (cadr instr))]
+                 [(equal? code 'fetch-int-literal)
+                  (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n\tmove.l\td0,a0~n" (cadr instr))]
+                 [(equal? code 'end-program)
+                  (printf "\tbra\tepilogue~n~n")]
+                 [else (printf "~a~n" instr)]) arg-count])))
 
-(define (translate-stream in)
+(define (translate-stream arg-count in)
   (let ([instr (read in)])
     (cond [(not (eof-object? instr))
-           (translate-instr instr)
-           (translate-stream in)])))
+           (translate-stream (translate-instr arg-count instr) in)])))
 
 (define (il-to-asm filename)
   (let ([in (open-input-file filename)])
     (translate-stream in)))
 
 (print-prologue)
-(translate-stream (current-input-port))
+(translate-stream 0 (current-input-port))
 (print-epilogue)
