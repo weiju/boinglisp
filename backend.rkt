@@ -16,6 +16,7 @@
 
 (define (print-epilogue)
   (printf "~n\t;; Epilogue Start~n")
+  (printf "\talign 2~n")
   (printf "epilogue:~n")
   (printf "\tbsr\tcleanup_runtime~n")
   (printf "error:~n")
@@ -26,6 +27,7 @@
   (cond [(eq? varname 'quote) (printf "\tlea\tquote,a0~n")]
         [(eq? varname 'println) (printf "\tlea\tprintln,a0~n")]
         [(eq? varname 'print) (printf "\tlea\tprint_str,a0~n")]
+        [(eq? varname '+) (printf "\tlea\tadd_int,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 
 (define (translate-instr instr)
@@ -48,6 +50,8 @@
              (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
           [(equal? code 'fetch-str-literal)
            (printf "\tlea\t~a,a0~n" (cadr instr))]
+          [(equal? code 'fetch-int-literal)
+           (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n\tmove.l\td0,a0~n" (cadr instr))]
           [(equal? code 'end-program)
            (printf "\tbra\tepilogue~n~n")]
           [else (printf "~a~n" instr)])))

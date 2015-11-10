@@ -2,6 +2,7 @@
         ;; Every compiled Lisp program uses functions out of this
         ;; module
         xdef    init_runtime,cleanup_runtime,nil_str,quote,print_str,println
+        xdef    add_int
 
 ABSEXECBASE		EQU	4
 
@@ -32,6 +33,20 @@ print_greeting:
         PRINT_ADDR   greeting
         rts
 
+add_int:
+        ;; Currently, this only adds 2 values, TODO: add arbitrary number
+        ;; Parameter is 4 bytes after return address
+        ;; a0 :=  sum(parameters) 
+        move.l  4(a7),d0
+        move.l  8(a7),d0
+        asr.l   #1,d0
+        asr.l   #1,d1
+        add.l   d0,d1
+        asl.l   #1,d1
+        ori.l   #1,d1
+        move.l  d1,a0
+        rts
+
         ;; A simple output function that expects the address of the string
         ;; to print as the first argument (on top of the stack)
 print_str:
@@ -42,6 +57,11 @@ print_str:
 
 println:
         move.l  4(a7),a0
+        move.l  a0,d0
+        btst    #0,d0
+        beq     pl_do_str
+        lea     is_int_msg,a0
+pl_do_str:
         PRINT_A0
         lea     line_feed,a0
         PRINT_A0
@@ -84,6 +104,10 @@ dosname:
 	    align	2
 greeting:
 	    dc.b	'Boing Lisp Version 0.001 (c) 2015',10,0
+
+	    align	2
+is_int_msg:
+	    dc.b	'result is integer',10,0
         ;; Note: this is a trick, line_feed is at a 4 byte-boundary
         ;; because nil_str has length 3
 	    align	2
