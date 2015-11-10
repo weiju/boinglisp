@@ -7,25 +7,20 @@
 ;;   - all other values have their LSB set to 0, currently this is
 ;;     - string pointer
 (define (print-prologue)
-  (printf "\t;; Prologue Start~n")
-  (printf "\tINCLUDE \"runtime_macros.i\"~n")
-  (printf "\tbsr\tinit_runtime~n")
-  (printf "\ttst.l\td0~n")
-  (printf "\tbeq.s\terror~n")
-  (printf "\t;; Prologue End~n~n"))
+  (printf "\tcode~n")
+  (printf "\txdef\t_bl_main~n")
+  (printf "\tcnop\t0,4~n")
+  (printf "_bl_main:"))
 
 (define (print-epilogue)
-  (printf "~n\t;; Epilogue Start~n")
-  (printf "\talign 2~n")
+  (printf "\tcnop\t0,4~n")
   (printf "epilogue:~n")
-  (printf "\tbsr\tcleanup_runtime~n")
-  (printf "error:~n")
   (printf "\tmoveq\t#0,d0~n")
   (printf "\trts~n"))
 
 (define (lookup-variable varname)
   (cond [(eq? varname 'quote) (printf "\tlea\tquote,a0~n")]
-        [(eq? varname 'println) (printf "\tlea\tprintln,a0~n")]
+        [(eq? varname 'println) (printf "\tlea\t_bl_println,a0~n")]
         [(eq? varname 'print) (printf "\tlea\tprint_str,a0~n")]
         [(eq? varname '+) (printf "\tlea\tadd_int,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))

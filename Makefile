@@ -1,6 +1,8 @@
-ASM_FLAGS = -Fhunk -devpac -I/home/weiju/Development/amigadev/NDK_3.9/Include/include_i # -L runtime.list
-VLINK_FLAGS = -L/home/weiju/local/vbcc/targets/m68k-amigaos/lib -bamigahunk -lamiga
+ASM_FLAGS = -Fhunk -devpac -I/home/weiju/Development/amigadev/NDK_3.9/Include/include_i
+
 ASM = vasmm68k_mot
+CC = vc +kick13
+
 .SUFFIXES : .o .asm
 
 all: main test
@@ -10,8 +12,8 @@ all: main test
 clean:
 	rm -f main test *.o
 
-main: main.o runtime.o
-	vlink $(VLINK_FLAGS) -o $@ -s $^
+main: main.o bl_runtime.o
+	$(CC) -o $@ -s $^
 
-test: test.o runtime.o
-	vlink $(VLINK_FLAGS) -o $@ -s $^
+test: test.o bl_runtime.o
+	$(CC) -o $@ -s $^

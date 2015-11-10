@@ -1,16 +1,7 @@
-
-        INCLUDE "exec/exec.i"
-        INCLUDE "runtime_macros.i"
-
-        ;; PROGRAM STARTS HERE
-start:
-        bsr     init_runtime
-	    tst.l	d0
-        beq.s   error
-        ;; do nothing
-        bsr     cleanup_runtime
-
-error:
+        code
+        xdef    _bl_main
+        cnop    0,4
+_bl_main:
 	    moveq	#0,d0
 	    rts
 

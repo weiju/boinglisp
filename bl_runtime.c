@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include "bl_runtime.h"
 
 int bl_init()
 {
@@ -17,17 +18,24 @@ void bl_cleanup()
 void bl_println(int numargs, ...)
 {
     va_list args;
-    int current, i;
+    BLWORD current;
+    int i;
     va_start(args, numargs);
     for (i = 0; i < numargs; i++) {
-        current = va_arg(args, int);
-        printf("%d\n", current);
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            int n = BL_TO_FIXNUM(current);
+            printf("%d\n", n);
+        }
     }
     va_end(args);
 }
 
+/* */
 int main(int argc, char **argv)
 {
-    bl_println(3, 1, 2, 3);
+    bl_init();
+    bl_main();
+    bl_cleanup();
     return 1;
 }
