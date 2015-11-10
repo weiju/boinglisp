@@ -52,21 +52,65 @@ add_int:
         ;; to print as the first argument (on top of the stack)
 print_str:
         ;; Parameter is 4 bytes after return address
-        move.l  4(a7),a0
+        move.l  4(a7),a0        ; # args
+        move.l  8(a7),a0        ; first arg
         PRINT_A0
         rts
 
 println:
-        move.l  4(a7),a0
+        move.l  4(a7),a0        ; # args
+        move.l  8(a7),a0        ; first arg
         move.l  a0,d0
         btst    #0,d0
-        beq     pl_do_str
-        lea     is_int_msg,a0
-pl_do_str:
+        beq     println_do_str
+        ;; number conversion
+        bsr     itoa
+        lea     itoa_buf,a0
+println_do_str:
         PRINT_A0
         lea     line_feed,a0
         PRINT_A0
         rts
+
+        ;; the number to convert is in d0
+        ;; the output will be in itoa_buf
+        ;; the idea is to build the string from the smallest digit to the
+        ;; largest and then reverse the string
+        ;; one of the problems is that the div instruction will
+        ;; overflow on large numbers.
+        ;; For now, we will only ensure working on numbers
+        ;; which divided by 10 fit in the 16bit range
+        ;; TODO: 31 bit numbers, negative numbers
+itoa:   lea     itoa_buf,a0
+        asr.l   #1,d0           ; get rid of the LSB (marking fixnum)
+
+itoa_loop:
+        divu    #10,d0          ; quotient in lo16, remainder in hi16
+        move.l  d0,d1
+        swap    d1              ; 16-bit remainder (a single digit)
+        move.b  #'0',d2
+        add.b   d1,d2           ; d2 := d1 + d2
+        move.b  d2,(a0)+
+        cmp.w   #0,d0           ; are we finished ?
+        beq     itoa_end        ; yes
+        andi.l  #$ffff,d0       ; get rid of the remainder
+        bra     itoa_loop
+itoa_end:
+        ;; TODO: reverse the string
+        move.b  #0,(a0)
+        rts
+
+
+;; itoa:   lea itoa_buf,a0
+;;         move.l  #10,d0
+;;         move.l  #40,d1
+;;         ;; note: the quotient has to fit in a 16-bit word on MC68000!!!
+;;         divu    d0,d1           ; d1 := d1 / d0
+;;         move.b  #'0',d2
+;;         add.b   d1,d2           ; d2 := d1 + d2
+;;         move.b  d2,(a0)+
+;;         move.b  #0,(a0)
+;;         rts
 
 quote:
         ;; TODO: quote calls should be optimized by the compiler
@@ -84,6 +128,11 @@ quote:
 	    align	2
 dosbase:
         dc.l    0
+        ;; This is the buffer to use for int -> string conversion
+        ;; since the maximum length including the optional sign is 11,
+        ;; 12 bytes is large enough to hold the 0 byte as well
+itoa_buf:
+        ds.b    12
 
         ;; ----------------------------------------------------------------
         ;; Data Section (placed in Fast RAM)

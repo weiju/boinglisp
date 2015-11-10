@@ -6,7 +6,6 @@
 ;;   - integers (fixnum) are 31 bits and have their LSB set to 1
 ;;   - all other values have their LSB set to 0, currently this is
 ;;     - string pointer
-;; TODO: Use arity information to adjust stack
 (define (print-prologue)
   (printf "\t;; Prologue Start~n")
   (printf "\tINCLUDE \"runtime_macros.i\"~n")
