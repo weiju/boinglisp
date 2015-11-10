@@ -11,7 +11,7 @@ ABSEXECBASE		EQU	4
         ;; Initialize the Lisp runtime system
 init_runtime:
         move.l	ABSEXECBASE.w,a6
-	    lea	    dosname(pc),a1
+	    lea	    dosname,a1
 	    moveq	#0,d0
         JSRLIB  OpenLibrary
 	    tst.l	d0
@@ -53,20 +53,40 @@ quote:
         move.l  4(a7),a0
         rts
 
-        ;; Predefined values of length multiples of 4
+        ;; ----------------------------------------------------------------
+        ;; BSS Section (placed in Fast RAM)
+        ;; All explicitly referred data must be aligned to a 32-bit boundary
+        ;; so they can at the same time tagged with type information and
+        ;; fit into a machine word, on Motorola 68k this is always 32 bit
+        ;; ----------------------------------------------------------------
+        bss_f
+	    align	2
 dosbase:
         dc.l    0
 
-        ;; Predefined values of length multiples of 2
+        ;; ----------------------------------------------------------------
+        ;; Data Section (placed in Fast RAM)
+        ;; All explicitly referred data must be aligned to a 32-bit boundary
+        ;; so they can at the same time tagged with type information and
+        ;; fit into a machine word, on Motorola 68k this is always 32 bit
+        ;; Predefined values of length multiples of 4
+        ;; ----------------------------------------------------------------
+        data_f
         ;; representation of the NIL value
+	    align	2
 lisp_nil:
         dc.w    0
 
         ;; Predefined byte strings
+	    align	2
 dosname:
 	    dc.b	'dos.library',0
+	    align	2
 greeting:
 	    dc.b	'Boing Lisp Version 0.001 (c) 2015',10,0
+        ;; Note: this is a trick, line_feed is at a 4 byte-boundary
+        ;; because nil_str has length 3
+	    align	2
 nil_str:
         dc.b    "'()"
 line_feed:

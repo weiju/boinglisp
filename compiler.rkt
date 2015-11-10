@@ -56,7 +56,7 @@
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
-    (printf ";; literals follow here (TODO)~n")
+    (printf ";; literals follow here~n")
     (hash-for-each sliterals (lambda (key value)
                                (printf "(string-literal ~a \"~a\")~n" key value)))))
 
