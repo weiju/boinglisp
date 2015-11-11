@@ -19,10 +19,10 @@
   (printf "\trts~n"))
 
 (define (lookup-variable varname)
-  (cond [(eq? varname 'quote) (printf "\tlea\tquote,a0~n")]
+  (cond [(eq? varname 'quote) (printf "\tlea\t_bl_quote,a0~n")]
         [(eq? varname 'println) (printf "\tlea\t_bl_println,a0~n")]
         [(eq? varname 'print) (printf "\tlea\t_bl_print,a0~n")]
-        [(eq? varname '+) (printf "\tlea\tadd_int,a0~n")]
+        [(eq? varname '+) (printf "\tlea\t_bl_add,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 
 (define (translate-instr arg-count instr)
@@ -30,13 +30,12 @@
     ;; pushing a parameter should increment the parameter counter
     ;; we actually need to remember how many parameters are on the
     ;; stack, because the caller needs to remove the params
-    (cond [(equal? code 'push) (printf "\tmove.l\ta0,-(a7)~n") (+ arg-count 1)]
+    (cond [(equal? code 'push) (printf "\tmove.l\td0,-(a7)~n") (+ arg-count 1)]
           [(equal? code 'apply)
            (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
            (printf "\tjsr\t(a0)~n")
-           (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4))
-           (printf "\tmove.l\td0,a0~n") 0]
-          [(cond [(equal? code 'fetch-nil) (printf "\tlea\tnil_str,a0~n")]
+           (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4)) 0]
+          [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
                  ;; to the subroutine.
@@ -50,9 +49,9 @@
                         [litval (caddr instr)])
                     (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
                  [(equal? code 'fetch-str-literal)
-                  (printf "\tlea\t~a,a0~n" (cadr instr))]
+                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
                  [(equal? code 'fetch-int-literal)
-                  (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n\tmove.l\td0,a0~n" (cadr instr))]
+                  (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
                  [(equal? code 'end-program)
                   (printf "\tbra\tepilogue~n~n")]
                  [else (printf "~a~n" instr)]) arg-count])))

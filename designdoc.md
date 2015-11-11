@@ -37,6 +37,11 @@ we can always assume that d0 will store the return value.
 All runtime library functions will also return a value, even void has a defined
 value (BL_UNDEFINED).
 
+Conventions:
+
+    - d0 is the main value register
+    - a0 is the main pointer register
+
 ** Data Types
 
 The general convention of other Scheme systems is followed that a machine word
@@ -45,4 +50,4 @@ is used to either store immediate values or a pointer type.
 Immediate values are:
 
   - fixnum (LSB is 1)
-  
+

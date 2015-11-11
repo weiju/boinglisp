@@ -4,7 +4,8 @@
 typedef int BLWORD;
 
 #define BL_IS_FIXNUM(v) ((v & 1) == 1)
-#define BL_TO_FIXNUM(v) (v >> 1)
+#define BL_FIXNUM2INT(v) (v >> 1)
+#define BL_INT2FIXNUM(v) ((v << 1) | 1)
 
 /* Special values */
 #define BL_UNDEFINED  (0x1e)

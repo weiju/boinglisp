@@ -12,6 +12,26 @@ void bl_cleanup()
 {
 }
 
+static void print_bl_value(BLWORD value)
+{
+    if (value == BL_UNDEFINED) return;
+    if (value == BL_EMPTY_LIST) {
+        fprintf(stdout, "'()");
+    } else if (BL_IS_FIXNUM(value)) {
+        int n = BL_FIXNUM2INT(value);
+        fprintf(stdout, "%d", n);
+    } else {
+        const char *s = (const char *) value;
+        fprintf(stdout, "\"%s\"", s);
+    }
+}
+
+static void println_bl_value(BLWORD value)
+{
+    print_bl_value(value);
+    fputs("\n", stdout);
+}
+
 BLWORD bl_print(int numargs, ...)
 {
     va_list args;
@@ -19,14 +39,7 @@ BLWORD bl_print(int numargs, ...)
     int i;
     va_start(args, numargs);
     for (i = 0; i < numargs; i++) {
-        current = va_arg(args, BLWORD);
-        if (BL_IS_FIXNUM(current)) {
-            int n = BL_TO_FIXNUM(current);
-            fprintf(stdout, "%d", n);
-        } else {
-            const char *s = (const char *) current;
-            fprintf(stdout, "\"%s\"", s);
-        }
+        print_bl_value(va_arg(args, BLWORD));
     }
     va_end(args);
     return BL_UNDEFINED;
@@ -39,18 +52,42 @@ BLWORD bl_println(int numargs, ...)
     int i;
     va_start(args, numargs);
     for (i = 0; i < numargs; i++) {
-        current = va_arg(args, BLWORD);
-        if (current == BL_UNDEFINED) continue;
-        if (BL_IS_FIXNUM(current)) {
-            int n = BL_TO_FIXNUM(current);
-            fprintf(stdout, "%d\n", n);
-        } else {
-            const char *s = (const char *) current;
-            fprintf(stdout, "\"%s\"\n", s);
-        }
+        println_bl_value(va_arg(args, BLWORD));
     }
     va_end(args);
     return BL_UNDEFINED;
+}
+
+BLWORD bl_add(int numargs, ...)
+{
+    va_list args;
+    BLWORD current, result = 0;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            result += BL_FIXNUM2INT(current);
+        } else {
+            fprintf(stdout, "ERROR ! wrong type\n");
+        }
+    }
+    va_end(args);
+    return BL_INT2FIXNUM(result);
+}
+
+BLWORD bl_quote(int numargs, ...)
+{
+    va_list args;
+    BLWORD current;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        break;
+    }
+    va_end(args);
+    return current;
 }
 
 /*
