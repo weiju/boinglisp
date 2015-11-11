@@ -12,10 +12,7 @@ void bl_cleanup()
 {
 }
 
-/*
- * Variable argument function.
- */
-void bl_println(int numargs, ...)
+BLWORD bl_print(int numargs, ...)
 {
     va_list args;
     BLWORD current;
@@ -25,13 +22,40 @@ void bl_println(int numargs, ...)
         current = va_arg(args, BLWORD);
         if (BL_IS_FIXNUM(current)) {
             int n = BL_TO_FIXNUM(current);
-            printf("%d\n", n);
+            fprintf(stdout, "%d", n);
+        } else {
+            const char *s = (const char *) current;
+            fprintf(stdout, "%s", s);
         }
     }
     va_end(args);
+    return BL_UNDEFINED;
 }
 
-/* */
+BLWORD bl_println(int numargs, ...)
+{
+    va_list args;
+    BLWORD current;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            int n = BL_TO_FIXNUM(current);
+            fprintf(stdout, "%d\n", n);
+        } else {
+            const char *s = (const char *) current;
+            fprintf(stdout, "%s\n", s);
+        }
+    }
+    va_end(args);
+    return BL_UNDEFINED;
+}
+
+/*
+  This is the real start of the program, it calls bl_main(), defined by the
+  compiler output.
+*/
 int main(int argc, char **argv)
 {
     bl_init();
