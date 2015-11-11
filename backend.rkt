@@ -31,16 +31,17 @@
     ;; we actually need to remember how many parameters are on the
     ;; stack, because the caller needs to remove the params
     (cond [(equal? code 'push) (printf "\tmove.l\ta0,-(a7)~n") (+ arg-count 1)]
+          [(equal? code 'apply)
+           (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
+           (printf "\tjsr\t(a0)~n")
+           (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4))
+           (printf "\tmove.l\td0,a0~n") 0]
           [(cond [(equal? code 'fetch-nil) (printf "\tlea\tnil_str,a0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
                  ;; to the subroutine.
                  ;; After return we need to add the (4*(number of parameters+1))
                  ;; bytes to the stack pointer to restore the state
-                 [(equal? code 'apply)
-                  (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
-                  (printf "\tjsr\t(a0)~n")
-                  (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4))]
                  [(equal? code 'lookup-variable)
                   (let ([varname (cadr instr)])
                     (lookup-variable varname))]

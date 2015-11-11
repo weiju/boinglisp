@@ -2,9 +2,9 @@
 #include <stdarg.h>
 #include "bl_runtime.h"
 
+static char *APP_NAME = "Boing Lisp version 0.002 (c) 2015\n";
 int bl_init()
 {
-    printf("Boing Lisp version 0.002 (c) 2015\n");
     return 1;
 }
 
@@ -25,7 +25,7 @@ BLWORD bl_print(int numargs, ...)
             fprintf(stdout, "%d", n);
         } else {
             const char *s = (const char *) current;
-            fprintf(stdout, "%s", s);
+            fprintf(stdout, "\"%s\"", s);
         }
     }
     va_end(args);
@@ -40,12 +40,13 @@ BLWORD bl_println(int numargs, ...)
     va_start(args, numargs);
     for (i = 0; i < numargs; i++) {
         current = va_arg(args, BLWORD);
+        if (current == BL_UNDEFINED) continue;
         if (BL_IS_FIXNUM(current)) {
             int n = BL_TO_FIXNUM(current);
             fprintf(stdout, "%d\n", n);
         } else {
             const char *s = (const char *) current;
-            fprintf(stdout, "%s\n", s);
+            fprintf(stdout, "\"%s\"\n", s);
         }
     }
     va_end(args);
