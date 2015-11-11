@@ -10,7 +10,7 @@
   (printf "\tcode~n")
   (printf "\txdef\t_bl_main~n")
   (printf "\tcnop\t0,4~n")
-  (printf "_bl_main:"))
+  (printf "_bl_main:~n"))
 
 (define (print-epilogue)
   (printf "\tcnop\t0,4~n")
@@ -35,6 +35,10 @@
            (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
            (printf "\tjsr\t(a0)~n")
            (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4)) 0]
+          [(equal? code 'push-continuation)
+           ;; TODO
+           (printf ";; TODO: push-continuation \"~a\"~n" (cadr instr))
+           0]
           [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
@@ -54,11 +58,13 @@
                   (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
                  [(equal? code 'end-program)
                   (printf "\tbra\tepilogue~n~n")]
+                 [(equal? code 'label)
+                  (printf "~a:~n" (cadr instr))]
                  [else (printf "~a~n" instr)]) arg-count])))
 
 (define (translate-stream arg-count in)
   (let ([instr (read in)])
-    (cond [(not (eof-object? instr))
+    (cond [(not (eof-object? instr))           
            (translate-stream (translate-instr arg-count instr) in)])))
 
 (define (il-to-asm filename)

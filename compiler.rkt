@@ -40,6 +40,12 @@
 (define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
 (define (emit-lookup-variable varname) (printf "(lookup-variable ~a)~n" varname))
 (define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
+(define (emit-continuation state)
+  (let ([label (string-append "resume" (~a (cstate-lcount state)))])
+    (printf "(push-continuation \"~a\")~n" label)
+    (set-cstate-lcount! state (+ (cstate-lcount state) 1))
+    label))
+(define (emit-label label) (printf "(label \"~a\")~n" label))
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
@@ -76,9 +82,12 @@
            [else
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]
-    [else (let ([fun (car sexp)])
+    [else (let* ([fun (car sexp)]
+                 [label (emit-continuation state)])            
             (process-args (cdr sexp) state)
-            (emit-call fun))]))
+            (emit-call fun)
+            (emit-label label))
+          ]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
