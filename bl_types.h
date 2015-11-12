@@ -1,5 +1,6 @@
-#ifndef __BL_RUNTIME_H__
-#define __BL_RUNTIME_H__
+#ifndef __BL_TYPES_H__
+#define __BL_TYPES_H__
+#pragma once
 
 typedef int BLWORD;
 
@@ -27,7 +28,7 @@ struct _Environment {
 };
 
 struct _Template {
-
+    BLWORD code;
 };
 
-#endif /* __BL_RUNTIME_H__ */
+#endif /* __BL_TYPES_H__ */

@@ -16,7 +16,7 @@ clean:
 main: main.o bl_runtime.o
 	$(CC) -o $@ -s $^
 
-test: test.o bl_runtime.o
+test: test.o bl_runtime.o bl_environment.o
 	$(CC) -o $@ -s $^
 
 check: bl_environment_test.c chibi.c bl_environment.c

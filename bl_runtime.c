@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
-#include "bl_runtime.h"
+#include "bl_types.h"
+#include "bl_environment.h"
 
 /*
  * The kernel and main entry point of the BoingLisp system.
@@ -9,6 +10,8 @@
  */
 
 static char *APP_NAME = "Boing Lisp version 0.002 (c) 2015\n";
+static struct _bl_toplevel_env *toplevel_env;
+
 int bl_init()
 {
     /* TODO:
@@ -16,6 +19,7 @@ int bl_init()
        that environment
        2. Allocate an initial page to hold some heap objects
      */
+    toplevel_env = bl_new_tl_env();
     return 1;
 }
 
@@ -24,6 +28,7 @@ void bl_cleanup()
     /* TODO: free all resources that were allocated during
        the execution
      */
+    if (toplevel_env) bl_free_tl_env(toplevel_env);
 }
 
 static void print_bl_value(BLWORD value)

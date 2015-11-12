@@ -2,7 +2,7 @@
 #ifndef __BL_ENVIRONMENT_H__
 #define __BL_ENVIRONMENT_H__
 
-#include "bl_runtime.h"
+#include "bl_types.h"
 
 /*
  * A simple hash based string template library. Templates look a little
