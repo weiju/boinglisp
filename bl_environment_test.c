@@ -5,36 +5,28 @@
 
 CHIBI_TEST(Test_new_dict)
 {
-    struct stemp_dict *dict = stemp_new_dict();
-    chibi_assert_not_null(dict);
-    chibi_assert_eq_int(0, dict->num_entries);
-    chibi_assert(dict->size > 0);
-    stemp_free_dict(dict);
+    struct _bl_toplevel_env *env = bl_new_tl_env();
+    chibi_assert_not_null(env);
+    chibi_assert_eq_int(0, env->num_entries);
+    chibi_assert(env->size > 0);
+    bl_free_tl_env(env);
 }
 
 CHIBI_TEST(Test_put_get)
 {
-    struct stemp_dict *dict = stemp_new_dict();
-    stemp_dict_put(dict, "key", "value");
-    chibi_assert_eq_cstr("value", stemp_dict_get(dict, "key")->cstr_value);
-    stemp_free_dict(dict);
-}
-
-CHIBI_TEST(Test_put_get_null)
-{
-    struct stemp_dict *dict = stemp_new_dict();
-    stemp_dict_put(dict, "key", NULL);
-    chibi_assert_eq_cstr(NULL, stemp_dict_get(dict, "key")->cstr_value);
-    stemp_free_dict(dict);
+    struct _bl_toplevel_env *env = bl_new_tl_env();
+    bl_tl_env_put(env, "key", 4711);
+    chibi_assert_eq_int(4711, bl_tl_env_get(env, "key"));
+    bl_free_tl_env(env);
 }
 
 CHIBI_TEST(Test_put_twice_and_get)
 {
-    struct stemp_dict *dict = stemp_new_dict();
-    stemp_dict_put(dict, "key", "value1");
-    stemp_dict_put(dict, "key", "value2");
-    chibi_assert_eq_cstr("value2", stemp_dict_get(dict, "key")->cstr_value);
-    stemp_free_dict(dict);
+    struct _bl_toplevel_env *env = bl_new_tl_env();
+    bl_tl_env_put(env, "key", 1);
+    bl_tl_env_put(env, "key", 2);
+    chibi_assert_eq_int(2, bl_tl_env_get(env, "key"));
+    bl_free_tl_env(env);
 }
 
 
@@ -43,7 +35,6 @@ int main(int argc, char **argv)
     chibi_suite *suite = chibi_suite_new();
     chibi_summary_data summary;
     chibi_suite_add_test(suite, Test_new_dict);
-    chibi_suite_add_test(suite, Test_put_get_null);
     chibi_suite_add_test(suite, Test_put_get);
 
     chibi_suite_add_test(suite, Test_put_twice_and_get);

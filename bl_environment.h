@@ -2,6 +2,7 @@
 #ifndef __BL_ENVIRONMENT_H__
 #define __BL_ENVIRONMENT_H__
 
+#include "bl_runtime.h"
 
 /*
  * A simple hash based string template library. Templates look a little
@@ -9,32 +10,21 @@
  */
 #define STEMP_MAX_KEY_LENGTH 31
 
-typedef enum {STHT_INT, STHT_CSTR, STHT_PTR} stemp_ht_value_type;
-
-typedef struct _stemp_htable_value {
-  stemp_ht_value_type value_type;
-  union {
-    int int_value;
-    char *cstr_value;
-    void *ptr_value;
-  };
-} stemp_htable_value;
-
-struct stemp_htable_entry {
-  char key[STEMP_MAX_KEY_LENGTH + 1];
-  stemp_htable_value value;
-  struct stemp_htable_entry *next; /* to resolve hash collisions */
+struct _bl_htable_entry {
+    char key[STEMP_MAX_KEY_LENGTH + 1];
+    BLWORD value;
+    struct _bl_htable_entry *next; /* to resolve hash collisions */
 };
 
-struct stemp_dict {
-  int num_entries;
-  int size;
-  struct stemp_htable_entry **entries;
+struct _bl_toplevel_env {
+    int num_entries;
+    int size;
+    struct _bl_htable_entry **entries;
 };
 
-extern struct stemp_dict *stemp_new_dict();
-extern void stemp_free_dict(struct stemp_dict *);
-extern const char *stemp_dict_put(struct stemp_dict *dict, const char *key, const char *value);
-extern const stemp_htable_value *stemp_dict_get(struct stemp_dict *dict, const char *key);
+extern struct _bl_toplevel_env *bl_new_tl_env();
+extern void bl_free_tl_env(struct _bl_toplevel_env *);
+extern const char *bl_tl_env_put(struct _bl_toplevel_env *env, const char *key, BLWORD value);
+extern BLWORD bl_tl_env_get(struct _bl_toplevel_env *env, const char *key);
 
-#endif /* __SIMPLE_TEMPLATES_H__ */
+#endif /* __BL_ENVIRONMENT_H__ */
