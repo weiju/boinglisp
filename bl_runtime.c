@@ -3,6 +3,7 @@
 #include "bl_runtime.h"
 
 /*
+ * The kernel and main entry point of the BoingLisp system.
  * This module contains the essential functionality that is
  * necessary for every BoingLisp program
  */
@@ -10,11 +11,19 @@
 static char *APP_NAME = "Boing Lisp version 0.002 (c) 2015\n";
 int bl_init()
 {
+    /* TODO:
+       1. Initialize top-level environment and return a pointer to
+       that environment
+       2. Allocate an initial page to hold some heap objects
+     */
     return 1;
 }
 
 void bl_cleanup()
 {
+    /* TODO: free all resources that were allocated during
+       the execution
+     */
 }
 
 static void print_bl_value(BLWORD value)
