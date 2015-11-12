@@ -23,22 +23,27 @@
         [(eq? varname 'println) (printf "\tlea\t_bl_println,a0~n")]
         [(eq? varname 'print) (printf "\tlea\t_bl_print,a0~n")]
         [(eq? varname '+) (printf "\tlea\t_bl_add,a0~n")]
+        [(eq? varname '-) (printf "\tlea\t_bl_sub,a0~n")]
+        [(eq? varname '*) (printf "\tlea\t_bl_mul,a0~n")]
+        [(eq? varname '/) (printf "\tlea\t_bl_div,a0~n")]
         [else (printf "looking up: ~a~n" varname)]))
 
-(define (translate-instr arg-count instr)
-  (let ([code (car instr)])
+(define (translate-instr arg-counts instr)
+  (let ([code (car instr)]
+        [arg-count (car arg-counts)])
     ;; pushing a parameter should increment the parameter counter
     ;; we actually need to remember how many parameters are on the
     ;; stack, because the caller needs to remove the params
-    (cond [(equal? code 'push) (printf "\tmove.l\td0,-(a7)~n") (+ arg-count 1)]
+    (cond [(equal? code 'push) (printf "\tmove.l\td0,-(a7)~n")
+                               (cons (+ arg-count 1) (cdr arg-counts))]
           [(equal? code 'apply)
            (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
            (printf "\tjsr\t(a0)~n")
-           (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4)) 0]
+           (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4)) (cdr arg-counts)]
           [(equal? code 'push-continuation)
            ;; TODO
            (printf ";; TODO: push-continuation \"~a\"~n" (cadr instr))
-           0]
+           (cons 0 arg-counts)]
           [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
@@ -60,17 +65,18 @@
                   (printf "\tbra\tepilogue~n~n")]
                  [(equal? code 'label)
                   (printf "~a:~n" (cadr instr))]
-                 [else (printf "~a~n" instr)]) arg-count])))
+                 [else (printf "~a~n" instr)]) arg-counts])))
 
-(define (translate-stream arg-count in)
+(define (translate-stream arg-counts in)
   (let ([instr (read in)])
-    (cond [(not (eof-object? instr))           
-           (translate-stream (translate-instr arg-count instr) in)])))
+    (cond [(not (eof-object? instr))
+           ;;(println instr)
+           (translate-stream (translate-instr arg-counts instr) in)])))
 
 (define (il-to-asm filename)
   (let ([in (open-input-file filename)])
     (translate-stream in)))
 
 (print-prologue)
-(translate-stream 0 (current-input-port))
+(translate-stream '(0 0) (current-input-port))
 (print-epilogue)

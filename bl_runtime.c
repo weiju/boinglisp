@@ -2,6 +2,11 @@
 #include <stdarg.h>
 #include "bl_runtime.h"
 
+/*
+ * This module contains the essential functionality that is
+ * necessary for every BoingLisp program
+ */
+
 static char *APP_NAME = "Boing Lisp version 0.002 (c) 2015\n";
 int bl_init()
 {
@@ -68,6 +73,62 @@ BLWORD bl_add(int numargs, ...)
         current = va_arg(args, BLWORD);
         if (BL_IS_FIXNUM(current)) {
             result += BL_FIXNUM2INT(current);
+        } else {
+            fprintf(stdout, "ERROR ! wrong type\n");
+        }
+    }
+    va_end(args);
+    return BL_INT2FIXNUM(result);
+}
+
+BLWORD bl_sub(int numargs, ...)
+{
+    va_list args;
+    BLWORD current, result = 0;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            if (i == 0) result = BL_FIXNUM2INT(current);
+            else result -= BL_FIXNUM2INT(current);
+        } else {
+            fprintf(stdout, "ERROR ! wrong type\n");
+        }
+    }
+    va_end(args);
+    return BL_INT2FIXNUM(result);
+}
+
+BLWORD bl_mul(int numargs, ...)
+{
+    va_list args;
+    BLWORD current, result = 1;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            result *= BL_FIXNUM2INT(current);
+        } else {
+            fprintf(stdout, "ERROR ! wrong type\n");
+        }
+    }
+    va_end(args);
+    return BL_INT2FIXNUM(result);
+}
+
+BLWORD bl_div(int numargs, ...)
+{
+    va_list args;
+    BLWORD current, result = 0;
+    int i;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            if (i == 0) result = BL_FIXNUM2INT(current);
+            else result /= BL_FIXNUM2INT(current);
         } else {
             fprintf(stdout, "ERROR ! wrong type\n");
         }

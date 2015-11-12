@@ -12,4 +12,22 @@ typedef int BLWORD;
 #define BL_EOF        (0x3e)
 #define BL_EMPTY_LIST (0x0e)
 
+typedef struct _Continuation {
+    struct _Continuation *prev;
+    BLWORD value;
+    BLWORD env;
+    BLWORD label;
+    BLWORD tmpl;
+    BLWORD stack_ptr;
+} Continuation;
+
+struct _Environment {
+    struct _Environment *prev;
+    /* TODO: bindings */
+};
+
+struct _Template {
+
+};
+
 #endif /* __BL_RUNTIME_H__ */
