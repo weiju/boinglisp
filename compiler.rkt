@@ -53,6 +53,18 @@
     (hash-for-each sliterals (lambda (key value)
                                (printf "(string-literal ~a \"~a\")~n" key value)))))
 
+(define (emit-define define-args compiler-state)
+  (let ([bind-target (car define-args)])
+    ;; need to check:
+    ;; 1. only 2 arguments
+    ;; 2. first argument can only be
+    ;;   a. identifier (simple binding)
+    ;;   b. list with at least one identifier (named function)
+    (printf ";; special form: define~n")
+    (cond [(symbol? bind-target) (printf ";;<TODO: eval>~n;;(tl-env-set ~a)~n" bind-target)]
+          [(printf ";; (TODO: handle) bind-target: ~a~n" bind-target)])
+    ))
+
 ;; process function arguments right-to-left
 (define (process-args args state)
   (cond [(not (empty? args))
@@ -82,12 +94,16 @@
            [else
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]
-    [else (let* ([fun (car sexp)]
-                 [label (emit-continuation state)])            
-            (process-args (cdr sexp) state)
-            (emit-call fun)
-            (emit-label label))
-          ]))
+    [else (let ([fun (car sexp)])
+            (cond
+              ;; special forms evaluate their argument differently
+              ;; we do not generate any continuations for them for now
+              [(eq? 'define fun) (emit-define (cdr sexp) state)]
+              [(let ([label (emit-continuation state)])
+                (process-args (cdr sexp) state)
+                (emit-call fun)
+                (emit-label label))]))
+]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
