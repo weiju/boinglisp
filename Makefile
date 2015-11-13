@@ -13,7 +13,7 @@ all: main test
 clean:
 	rm -f main test bl_environment_test *.o *~
 
-main: main.o bl_runtime.o
+main: main.o bl_runtime.o bl_environment.o
 	$(CC) -o $@ -s $^
 
 test: test.o bl_runtime.o bl_environment.o

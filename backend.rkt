@@ -67,16 +67,23 @@
                   (printf "~a:~n" (cadr instr))]
                  [else (printf "~a~n" instr)]) arg-counts])))
 
+;; recursively translates the s-expressions coming from the input stream
+;; and translating to m68k code.
+;; the arg-counts argument is represents nested parameter counts
+;; since many procedures are of variable length, the translation
+;; needs to determine the number of arguments and push it on the stack
+;; as the first argument
 (define (translate-stream arg-counts in)
   (let ([instr (read in)])
     (cond [(not (eof-object? instr))
-           ;;(println instr)
-           (translate-stream (translate-instr arg-counts instr) in)])))
+           (let ([new-arg-counts (translate-instr arg-counts instr)])
+             (cond [(empty? new-arg-counts) (translate-stream '(0) in)]
+                   [(translate-stream new-arg-counts in)]))])))
 
 (define (il-to-asm filename)
   (let ([in (open-input-file filename)])
     (translate-stream in)))
 
 (print-prologue)
-(translate-stream '(0 0) (current-input-port))
+(translate-stream '(0) (current-input-port))
 (print-epilogue)
