@@ -165,6 +165,17 @@ BLWORD bl_quote(int numargs, ...)
     return current;
 }
 
+BLWORD bl_tlenv_bind(const char *key, BLWORD value)
+{
+    bl_tl_env_put(toplevel_env, key, value);
+    return BL_UNDEFINED;
+}
+
+BLWORD bl_tlenv_get(const char *key)
+{
+    return bl_tl_env_get(toplevel_env, key);
+}
+
 /*
   This is the real start of the program, it calls bl_main(), defined by the
   compiler output.

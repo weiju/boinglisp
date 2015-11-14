@@ -60,9 +60,11 @@
     ;; 2. first argument can only be
     ;;   a. identifier (simple binding)
     ;;   b. list with at least one identifier (named function)
-    (printf ";; special form: define~n")
-    (cond [(symbol? bind-target) (printf ";;<TODO: eval>~n;;(tl-env-set ~a)~n" bind-target)]
-          [(printf ";; (TODO: handle) bind-target: ~a~n" bind-target)])
+    (cond [(symbol? bind-target)
+           ;; TODO: generate space for symbol
+           (compile-exp (cadr define-args) compiler-state)
+           (printf "(tl-env-bind \"~a\")~n" bind-target)]
+          [(printf ";; (TODO: handle lambda) bind-target: ~a~n" bind-target)])
     ))
 
 ;; process function arguments right-to-left
