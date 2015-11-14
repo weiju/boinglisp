@@ -29,15 +29,6 @@ CHIBI_TEST(Test_tl_put_twice_and_get)
     bl_free_tl_env(env);
 }
 
-CHIBI_TEST(Test_new_local_env)
-{
-    struct _bl_local_env *env = bl_new_local_env(NULL);
-    chibi_assert_not_null(env);
-    chibi_assert(NULL == env->parent);
-    chibi_assert(NULL == env->head);
-    bl_free_local_env(env);
-}
-
 int main(int argc, char **argv)
 {
     chibi_suite *suite = chibi_suite_new();
@@ -45,8 +36,6 @@ int main(int argc, char **argv)
     chibi_suite_add_test(suite, Test_new_tl_env);
     chibi_suite_add_test(suite, Test_tl_put_get);
     chibi_suite_add_test(suite, Test_tl_put_twice_and_get);
-
-    chibi_suite_add_test(suite, Test_new_local_env);
 
     /* chibi_suite_run_tap(suite, &summary);*/
     chibi_suite_run(suite, &summary);

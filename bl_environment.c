@@ -68,7 +68,7 @@ const char *bl_tl_env_put(struct _bl_toplevel_env *env, const char *key, BLWORD 
     struct _bl_binding *new_entry;
 
     /* NULL or long keys not allowed */
-    if (!key || strlen(key) > STEMP_MAX_KEY_LENGTH) return NULL;
+    if (!key) return NULL;
 
     /* no dictionary or table size 0, TODO should resize table */
     if (!env || env->size == 0) return NULL;
@@ -77,7 +77,7 @@ const char *bl_tl_env_put(struct _bl_toplevel_env *env, const char *key, BLWORD 
     new_entry = calloc(1, sizeof(struct _bl_binding));
     if (!new_entry) return NULL;
 
-    strncpy(new_entry->key, key, STEMP_MAX_KEY_LENGTH);
+    new_entry->key = key;
 
     new_entry->value = value;
     if (!env->entries[slot]) env->entries[slot] = new_entry;
@@ -114,31 +114,10 @@ BLWORD bl_tl_env_get(struct _bl_toplevel_env *env, const char *key)
     slot = djb2_hash((const unsigned char *) key) % env->size;
     cur = env->entries[slot];
     if (!cur) return BL_UNDEFINED; /* no such entry */
-    if (!strncmp(cur->key, key, STEMP_MAX_KEY_LENGTH)) return cur->value;
+    if (!strcmp(cur->key, key)) return cur->value;
     while (cur->next) {
         cur = cur->next;
-        if (!strncmp(cur->key, key, STEMP_MAX_KEY_LENGTH)) return cur->value;
+        if (!strcmp(cur->key, key)) return cur->value;
     }
     return BL_UNDEFINED;
-}
-
-struct _bl_local_env *bl_new_local_env(struct _bl_local_env *parent)
-{
-    struct _bl_local_env *result = calloc(1, sizeof(struct _bl_local_env));
-    result->parent = parent;
-    return result;
-}
-
-void bl_free_local_env(struct _bl_local_env *env)
-{
-    if (env) free(env);
-}
-
-void bl_local_env_put(struct _bl_local_env *env, const char *key, BLWORD value)
-{
-}
-
-BLWORD bl_local_env_get(struct _bl_local_env *env, const char *key)
-{
-    return 0;
 }
