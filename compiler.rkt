@@ -15,7 +15,7 @@
 ;; lcount is the current label counter
 ;; slitvals is a hash table (label -> literal)
 ;; curr-templ current template data item
-(struct cstate (lcount slitvals) #:mutable #:transparent)
+(struct cstate (lcount slitvals symbols) #:mutable #:transparent)
 
 (define (atom? x) (not (or (pair? x) (null? x))))
 
@@ -36,6 +36,8 @@
   (cond [(eq? 'string-literal (car spec))
          (printf "(fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
         [else (printf "(fetch-int-literal ~a)~n" (cadr spec))]))
+(define (emit-fetch-symbol symbol)
+  (printf "(fetch-symbol \"~a\")~n" symbol))
 (define (emit-fetch-nil) (printf "(fetch-nil)~n"))
 (define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
 (define (emit-lookup-variable varname) (printf "(lookup-variable ~a)~n" varname))
@@ -53,6 +55,12 @@
     (hash-for-each sliterals (lambda (key value)
                                (printf "(string-literal ~a \"~a\")~n" key value)))))
 
+(define (emit-symbols compiler-state)
+  (let [(symbols (cstate-symbols compiler-state))]
+    (printf ";; symbols follow here~n")
+    (hash-for-each symbols (lambda (key value)
+                             (printf "(symbol ~a \"~a\")~n" key value)))))
+
 (define (emit-define define-args compiler-state)
   (let ([bind-target (car define-args)])
     ;; need to check:
@@ -61,9 +69,12 @@
     ;;   a. identifier (simple binding)
     ;;   b. list with at least one identifier (named function)
     (cond [(symbol? bind-target)
-           ;; TODO: generate space for symbol
+           ;; generate space for symbol
+           (emit-fetch-symbol (register-symbol compiler-state bind-target))
+           (emit-push-param)
            (compile-exp (cadr define-args) compiler-state)
-           (printf "(tl-env-bind \"~a\")~n" bind-target)]
+           (emit-push-param)
+           (printf "(tl-env-bind)~n")]
           [(printf ";; (TODO: handle lambda) bind-target: ~a~n" bind-target)])
     ))
 
@@ -75,7 +86,7 @@
            (emit-push-param))
          (process-args (drop-right args 1) state)]))
 
-;; management procedure for literal and template slot space
+;; management procedure for literals
 (define (register-literal state literal)
   ;; allocate a reference and put the reference to the literal
   ;; into the slots list
@@ -85,6 +96,13 @@
            (printf ";; ~a~n" state)
            (list 'string-literal litlabel))]
         [else (list 'int-literal literal)]))
+
+;; management procedure for symbols
+(define (register-symbol state symbol)
+  (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
+           (hash-set! (cstate-symbols state) symlabel symbol)
+           (printf ";; ~a~n" state)
+           symlabel))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
@@ -118,7 +136,8 @@
   (let ([sexp (read in)])
     (cond [(eof-object? sexp)
            (printf "(end-program)~n")
-           (emit-literals compiler-state)]
+           (emit-literals compiler-state)
+           (emit-symbols compiler-state)]
           [else
            (printf ";; sexp ~a~n" sexp-num)
            (compile-exp sexp compiler-state)
@@ -129,6 +148,6 @@
 (define (compile-file filename)
   (printf ";; compiling file: \"~a\"~n" filename)
   (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (make-hash))])
+        [compiler-state (cstate 0 (make-hash) (make-hash))])
     (compile-stream 1 compiler-state in)
     (close-input-port in)))

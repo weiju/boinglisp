@@ -53,10 +53,17 @@
                  [(equal? code 'lookup-variable)
                   (let ([varname (cadr instr)])
                     (lookup-variable varname))]
+                 ;; string literals
                  [(equal? code 'string-literal)
                   (let ([litname (cadr instr)]
                         [litval (caddr instr)])
                     (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
+                 ;; symbols
+                 [(equal? code 'symbol)
+                  (let ([symlabel (cadr instr)]
+                        [symval (caddr instr)])
+                    (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" symlabel symval))]
+                 
                  [(equal? code 'fetch-str-literal)
                   (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
                  [(equal? code 'fetch-int-literal)

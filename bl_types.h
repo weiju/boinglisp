@@ -13,18 +13,20 @@ typedef int BLWORD;
 #define BL_EOF        (0x3e)
 #define BL_EMPTY_LIST (0x0e)
 
-typedef struct _Continuation {
+struct HeapObject {};
+
+struct _Continuation {
     struct _Continuation *prev;
     BLWORD value;
     BLWORD env;
     BLWORD label;
     BLWORD tmpl;
     BLWORD stack_ptr;
-} Continuation;
+};
 
 struct _Environment {
     struct _Environment *prev;
-    /* TODO: bindings */
+    /* bindings follow here */
 };
 
 struct _Template {
