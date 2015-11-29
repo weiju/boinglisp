@@ -26,6 +26,7 @@
         [(eq? varname '-) (printf "\tlea\t_bl_sub,a0~n")]
         [(eq? varname '*) (printf "\tlea\t_bl_mul,a0~n")]
         [(eq? varname '/) (printf "\tlea\t_bl_div,a0~n")]
+        ;; TODO: for now only look in tl env
         [else (printf "looking up: ~a~n" varname)]))
 
 (define (translate-instr arg-counts instr)
@@ -66,8 +67,15 @@
                  
                  [(equal? code 'fetch-str-literal)
                   (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
+                 [(equal? code 'fetch-symbol)
+                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
                  [(equal? code 'fetch-int-literal)
                   (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
+                 [(equal? code 'tl-env-bind)
+                  (printf "\tjsr\t_bl_tl_env_bind~n")]
+                 [(equal? code 'lookup-env)
+                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n\tjsr\t_bl_tl_env_lookup~n"
+                          (cadr instr))]
                  [(equal? code 'end-program)
                   (printf "\tbra\tepilogue~n~n")]
                  [(equal? code 'label)

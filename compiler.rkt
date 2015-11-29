@@ -25,6 +25,12 @@
   (cond [(string? value) (string-append "\"" value "\"")]
         [else value]))
 
+(define (find-symbol state sym)
+  (let [(match (filter (lambda (pair) (eq? (cdr pair) sym))
+                       (hash->list (cstate-symbols state))))]
+    (cond [(empty? match) '()]
+          [(caar match)])))
+
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
@@ -37,10 +43,14 @@
          (printf "(fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
         [else (printf "(fetch-int-literal ~a)~n" (cadr spec))]))
 (define (emit-fetch-symbol symbol)
-  (printf "(fetch-symbol \"~a\")~n" symbol))
+  (printf "(fetch-symbol ~a)~n" symbol))
 (define (emit-fetch-nil) (printf "(fetch-nil)~n"))
 (define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
-(define (emit-lookup-variable varname) (printf "(lookup-variable ~a)~n" varname))
+(define (emit-lookup-variable varname state)
+  (let [(sym (find-symbol state varname))]
+    (cond [(not (null? sym)) (printf "(lookup-env ~a)~n" sym)]
+          [(printf "(lookup-variable ~a)~n" varname)])))
+
 (define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
 (define (emit-continuation state)
   (let ([label (string-append "resume" (~a (cstate-lcount state)))])
@@ -110,7 +120,9 @@
   (cond
     [(atom? sexp)
      (cond [(symbol? sexp)
-            (emit-lookup-variable sexp)]
+            ;; TODO: if the variable is in the registered symbols
+            ;; replace with a lookup using the symbol reference
+            (emit-lookup-variable sexp state)]
            [else
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]
@@ -122,8 +134,7 @@
               [(let ([label (emit-continuation state)])
                 (process-args (cdr sexp) state)
                 (emit-call fun)
-                (emit-label label))]))
-]))
+                (emit-label label))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
