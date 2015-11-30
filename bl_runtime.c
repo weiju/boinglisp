@@ -31,9 +31,9 @@ void bl_cleanup()
     if (toplevel_env) bl_free_tl_env(toplevel_env);
 }
 
-static void print_bl_value(BLWORD value)
+static int print_bl_value(BLWORD value)
 {
-    if (value == BL_UNDEFINED) return;
+    if (value == BL_UNDEFINED) return 0;
     if (value == BL_EMPTY_LIST) {
         fprintf(stdout, "'()");
     } else if (BL_IS_FIXNUM(value)) {
@@ -43,12 +43,12 @@ static void print_bl_value(BLWORD value)
         const char *s = (const char *) value;
         fprintf(stdout, "\"%s\"", s);
     }
+    return 1;
 }
 
 static void println_bl_value(BLWORD value)
 {
-    print_bl_value(value);
-    fputs("\n", stdout);
+    if (print_bl_value(value)) fputs("\n", stdout);
 }
 
 BLWORD bl_print(int numargs, ...)
@@ -171,7 +171,7 @@ BLWORD bl_tlenv_bind(const char *key, BLWORD value)
     return BL_UNDEFINED;
 }
 
-BLWORD bl_tlenv_get(const char *key)
+BLWORD bl_tlenv_lookup(const char *key)
 {
     return bl_tl_env_get(toplevel_env, key);
 }

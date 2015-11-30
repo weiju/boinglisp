@@ -80,9 +80,9 @@
     ;;   b. list with at least one identifier (named function)
     (cond [(symbol? bind-target)
            ;; generate space for symbol
-           (emit-fetch-symbol (register-symbol compiler-state bind-target))
-           (emit-push-param)
            (compile-exp (cadr define-args) compiler-state)
+           (emit-push-param)
+           (emit-fetch-symbol (register-symbol compiler-state bind-target))
            (emit-push-param)
            (printf "(tl-env-bind)~n")]
           [(printf ";; (TODO: handle lambda) bind-target: ~a~n" bind-target)])

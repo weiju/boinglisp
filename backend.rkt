@@ -41,10 +41,15 @@
            (printf "\tmove.l\t#~a,-(a7)~n" arg-count)
            (printf "\tjsr\t(a0)~n")
            (printf "\tadd.l\t#~a,a7~n" (* (+ arg-count 1) 4)) (cdr arg-counts)]
+
+          [(equal? code 'tl-env-bind)
+           (printf "\tjsr\t_bl_tlenv_bind~n\tadd.l\t#8,a7~n") (cdr arg-counts)]
+          
           [(equal? code 'push-continuation)
            ;; TODO
            (printf ";; TODO: push-continuation \"~a\"~n" (cadr instr))
            (cons 0 arg-counts)]
+          
           [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
@@ -71,10 +76,8 @@
                   (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
                  [(equal? code 'fetch-int-literal)
                   (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
-                 [(equal? code 'tl-env-bind)
-                  (printf "\tjsr\t_bl_tl_env_bind~n")]
                  [(equal? code 'lookup-env)
-                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n\tjsr\t_bl_tl_env_lookup~n"
+                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,-(a7)~n\tjsr\t_bl_tlenv_lookup~n\tadd.l\t#4,a7~n"
                           (cadr instr))]
                  [(equal? code 'end-program)
                   (printf "\tbra\tepilogue~n~n")]
