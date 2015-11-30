@@ -13,11 +13,17 @@ all: main test
 clean:
 	rm -f main test bl_environment_test *.o *~
 
-main: main.o bl_runtime.o bl_environment.o
+main: main.o bl_start.o bl_runtime.o bl_environment.o
 	$(CC) -o $@ -s $^
 
-test: test.o bl_runtime.o bl_environment.o
+test: test.o bl_start.o bl_runtime.o bl_environment.o
 	$(CC) -o $@ -s $^
 
-check: bl_environment_test.c chibi.c bl_environment.c
+check: bl_environment_test bl_runtime_test
+	./bl_environment_test && ./bl_runtime_test
+
+bl_environment_test: bl_environment_test.c chibi.c bl_environment.c
+	gcc -o bl_environment_test $^ && ./bl_environment_test
+
+bl_runtime_test: bl_runtime_test.c chibi.c bl_runtime.c bl_environment.c
 	gcc -o bl_environment_test $^ && ./bl_environment_test

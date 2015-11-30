@@ -4,7 +4,7 @@
 #include "bl_environment.h"
 
 /*
- * The kernel and main entry point of the BoingLisp system.
+ * The kernel of the BoingLisp system.
  * This module contains the essential functionality that is
  * necessary for every BoingLisp program
  */
@@ -216,16 +216,4 @@ BLWORD bl_tlenv_bind(const char *key, BLWORD value)
 BLWORD bl_tlenv_lookup(const char *key)
 {
     return bl_tl_env_get(toplevel_env, key);
-}
-
-/*
-  This is the real start of the program, it calls bl_main(), defined by the
-  compiler output.
-*/
-int main(int argc, char **argv)
-{
-    bl_init();
-    bl_main();
-    bl_cleanup();
-    return 1;
 }
