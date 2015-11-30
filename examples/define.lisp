@@ -1,2 +1,3 @@
 (define a 10)
-a
+(define b 32)
+(+ a b)

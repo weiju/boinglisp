@@ -31,11 +31,18 @@ void bl_cleanup()
     if (toplevel_env) bl_free_tl_env(toplevel_env);
 }
 
+/*
+ * I/O
+ */
 static int print_bl_value(BLWORD value)
 {
     if (value == BL_UNDEFINED) return 0;
     if (value == BL_EMPTY_LIST) {
         fprintf(stdout, "'()");
+    } else if (value == BL_TRUE) {
+        fputs("#t", stdout);
+    } else if (value == BL_FALSE) {
+        fputs("#f", stdout);
     } else if (BL_IS_FIXNUM(value)) {
         int n = BL_FIXNUM2INT(value);
         fprintf(stdout, "%d", n);
@@ -77,6 +84,9 @@ BLWORD bl_println(int numargs, ...)
     return BL_UNDEFINED;
 }
 
+/*
+ * Integer operations
+ */
 BLWORD bl_add(int numargs, ...)
 {
     va_list args;
@@ -151,6 +161,35 @@ BLWORD bl_div(int numargs, ...)
     return BL_INT2FIXNUM(result);
 }
 
+/*
+ * Comparisons
+ */
+BLWORD bl_num_eq(int numargs, ...)
+{
+    va_list args;
+    BLWORD current, result = BL_TRUE;
+    int i, curr_num, tmp;
+    va_start(args, numargs);
+    for (i = 0; i < numargs; i++) {
+        current = va_arg(args, BLWORD);
+        if (BL_IS_FIXNUM(current)) {
+            tmp = BL_FIXNUM2INT(current);
+            if (i > 0 && curr_num != tmp) {
+                result = BL_FALSE;
+                break;
+            }
+            curr_num = tmp;
+        } else {
+            fprintf(stdout, "ERROR ! wrong type\n");
+        }
+    }
+    va_end(args);
+    return result;
+}
+
+/*
+ * Elementary Lisp operations
+ */
 BLWORD bl_quote(int numargs, ...)
 {
     va_list args;
@@ -165,6 +204,9 @@ BLWORD bl_quote(int numargs, ...)
     return current;
 }
 
+/*
+ * Environment interface
+ */
 BLWORD bl_tlenv_bind(const char *key, BLWORD value)
 {
     bl_tl_env_put(toplevel_env, key, value);

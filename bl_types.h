@@ -2,16 +2,35 @@
 #define __BL_TYPES_H__
 #pragma once
 
+/*
+ * The internal data representation is inspired by Chicken Scheme.
+ * BLWORD is a machine word (architecture dependent, 32 or 64 Bit)
+ * representing a Lisp value, the low order nibble (4 bits) specify
+ * the type
+ */
 typedef int BLWORD;
 
+/* Fix nums are (machine word width - 1) sized integers with the
+   LSB set to 1
+ */
 #define BL_IS_FIXNUM(v) ((v & 1) == 1)
 #define BL_FIXNUM2INT(v) (v >> 1)
 #define BL_INT2FIXNUM(v) ((v << 1) | 1)
 
+/* Booleans */
+#define BL_BOOL_BITS    (0x06)
+#define BL_TRUE         (0x16)
+#define BL_FALSE        (0x06)
+
+/* Characters (unicode code point is in the upper 24 Bits)  */
+#define BL_CHAR_BITS    (0x0a)
+
 /* Special values */
-#define BL_UNDEFINED  (0x1e)
-#define BL_EOF        (0x3e)
-#define BL_EMPTY_LIST (0x0e)
+#define BL_SPECIAL_BITS (0x0e)
+#define BL_UNDEFINED    (0x1e)
+#define BL_EOF          (0x3e)
+#define BL_EMPTY_LIST   (0x0e)
+
 
 struct HeapObject {};
 

@@ -26,6 +26,7 @@
         [(eq? varname '-) (printf "\tlea\t_bl_sub,a0~n")]
         [(eq? varname '*) (printf "\tlea\t_bl_mul,a0~n")]
         [(eq? varname '/) (printf "\tlea\t_bl_div,a0~n")]
+        [(eq? varname '=) (printf "\tlea\t_bl_num_eq,a0~n")]
         ;; TODO: for now only look in tl env
         [else (printf "looking up: ~a~n" varname)]))
 
