@@ -187,6 +187,20 @@ BLWORD bl_num_eq(int numargs, ...)
     return result;
 }
 
+/* Boolean operations */
+BLWORD bl_not(int numargs, ...)
+{
+    va_list args;
+    BLWORD result = BL_FALSE;
+    va_start(args, numargs);
+    result = va_arg(args, BLWORD);
+    va_end(args);
+    if (result == BL_TRUE) result = BL_FALSE;
+    else if (result == BL_FALSE) result = BL_TRUE;
+    else ; /* TODO: type error */
+    return result;
+}
+
 /*
  * Elementary Lisp operations
  */
