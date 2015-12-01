@@ -1,8 +1,0 @@
-(print (and))
-(newline)
-(print (and #t #f))
-(newline)
-(print (or #f 2 #t 1))
-(newline)
-(print (and #t 2 3))
-(newline)

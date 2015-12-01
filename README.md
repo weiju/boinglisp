@@ -25,8 +25,10 @@ For running test suite:
 
 ## Run compilation
 
-racket run_compiler.rkt <input> | racket backend.rkt > test.asm
+```
+racket run_compiler.rkt <source-file> | racket backend.rkt > test.asm
 make
+```
 
 ## Status
 
