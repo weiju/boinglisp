@@ -6,15 +6,12 @@ CC = vc +kick13
 .PHONY : clean check
 .SUFFIXES : .o .asm
 
-all: main test
+all: test
 
 .asm.o:
 	$(ASM) $(ASM_FLAGS) -o $@ $<
 clean:
 	rm -f main test bl_environment_test bl_runtime_test *.o *~
-
-main: main.o bl_start.o bl_runtime.o bl_environment.o
-	$(CC) -o $@ -s $^
 
 test: test.o bl_start.o bl_runtime.o bl_environment.o
 	$(CC) -o $@ -s $^
