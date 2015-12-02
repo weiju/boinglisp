@@ -11,12 +11,32 @@
 ;; compile-file
 (provide compile-file)
 
+;; ************************************************************************
+;; **** COMPILER STATE
+;; *************************************
 ;; manage the compile state in this object
 ;; lcount is the current label counter
 ;; slitvals is a hash table (label -> literal)
 ;; curr-templ current template data item
 (struct cstate (lcount slitvals symbols) #:mutable #:transparent)
 
+;; generates a new label and updates the label counter
+(define (next-label state prefix)
+  (let ([result (string-append prefix (~a (cstate-lcount state)))])
+    (set-cstate-lcount! state (+ (cstate-lcount state) 1))
+    result))
+
+;; tries to retrieve a symbol from compiler state, if it exists,
+;; returns the key, otherwise the empty list
+(define (find-symbol state sym)
+  (let [(match (filter (lambda (pair) (eq? (cdr pair) sym))
+                       (hash->list (cstate-symbols state))))]
+    (cond [(empty? match) '()]
+          [(caar match)])))
+
+;; ***********************************************************************
+;; ***** General Helpers
+;; *********************************
 (define (atom? x) (not (or (pair? x) (null? x))))
 
 ;; ensure we emit the literals with the correct
@@ -25,12 +45,9 @@
   (cond [(string? value) (string-append "\"" value "\"")]
         [else value]))
 
-(define (find-symbol state sym)
-  (let [(match (filter (lambda (pair) (eq? (cdr pair) sym))
-                       (hash->list (cstate-symbols state))))]
-    (cond [(empty? match) '()]
-          [(caar match)])))
-
+;; ***********************************************************************
+;; ***** Code Generation
+;; *********************************
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
@@ -53,11 +70,10 @@
 
 (define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
 (define (emit-continuation state)
-  (let ([label (string-append "resume" (~a (cstate-lcount state)))])
-    (printf "(push-continuation \"~a\")~n" label)
-    (set-cstate-lcount! state (+ (cstate-lcount state) 1))
+  (let ([label (next-label state "resume")])
+    (printf "(push-continuation ~a)~n" label)
     label))
-(define (emit-label label) (printf "(label \"~a\")~n" label))
+(define (emit-label label) (printf "(label ~a)~n" label))
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
@@ -71,7 +87,12 @@
     (hash-for-each symbols (lambda (key value)
                              (printf "(symbol ~a \"~a\")~n" key value)))))
 
-(define (emit-define define-args compiler-state)
+
+;; ***********************************************************************
+;; ***** Compiler logic
+;; *********************************
+
+(define (compile-define define-args compiler-state)
   (let ([bind-target (car define-args)])
     ;; need to check:
     ;; 1. only 2 arguments
@@ -114,6 +135,21 @@
            (printf ";; ~a~n" state)
            symlabel))
 
+;; TODO: optimization: after a branch whose condition is always true
+;; (either else or #t), just stop compiling the rest of the branches
+;; test each condition one after another.
+;; If condition is true:
+;;   1. execute body
+;;   2. goto exit-label
+;; else skip to next condition label
+(define (compile-cond branches exit-label state)
+  (cond [(not (empty? branches))
+         (let* ([branch (car branches)]
+                [condition (car branch)])
+           (printf ";; branch condition: ~a~n" condition))
+         (compile-cond (cdr branches) exit-label state)]
+        [else (emit-label exit-label)]))
+
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
 (define (compile-exp sexp state)
@@ -128,9 +164,14 @@
     [(null? sexp) (emit-fetch-nil)]
     [else (let ([fun (car sexp)])
             (cond
-              ;; special forms evaluate their argument differently
-              ;; we do not generate any continuations for them for now
-              [(eq? 'define fun) (emit-define (cdr sexp) state)]
+              ;; Special forms (syntactic forms):
+              ;; different order of processing arguments
+              ;; and no generation of continuations
+              [(eq? 'define fun) (compile-define (cdr sexp) state)]
+              [(eq? 'cond fun) (compile-cond (cdr sexp)
+                                             (next-label state "exit-cond")
+                                             state)]
+              ;; Functions
               [(let ([label (emit-continuation state)])
                 (process-args (cdr sexp) state)
                 (emit-call fun)
