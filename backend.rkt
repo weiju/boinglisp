@@ -51,7 +51,8 @@
            ;; TODO
            (printf ";; TODO: push-continuation \"~a\"~n" (cadr instr))
            (cons 0 arg-counts)]
-          
+
+          ;; these branches preserve arg-counts
           [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
                  ;; for a procedure call we push the parameters and then the
                  ;; number of parameters on the stack before we branch
@@ -85,6 +86,10 @@
                   (printf "\tbra\tepilogue~n~n")]
                  [(equal? code 'label)
                   (printf "~a:~n" (cadr instr))]
+                 [(equal? code 'branch)
+                  (printf "\tbra\t~a~n" (cadr instr))]
+                 [(equal? code 'branch-false)
+                  (printf "\tcmpi.l\t#6,d0~n\tbeq\t~a~n" (cadr instr))]
                  [else (printf "~a~n" instr)]) arg-counts])))
 
 ;; recursively translates the s-expressions coming from the input stream

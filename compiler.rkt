@@ -142,13 +142,27 @@
 ;;   1. execute body
 ;;   2. goto exit-label
 ;; else skip to next condition label
-(define (compile-cond branches exit-label state)
+(define (compile-cond branches branch-label exit-label state)
   (cond [(not (empty? branches))
+         (emit-label branch-label)
          (let* ([branch (car branches)]
+                [next-branch-label (next-label state "cond")]
                 [condition (car branch)])
-           (printf ";; branch condition: ~a~n" condition))
-         (compile-cond (cdr branches) exit-label state)]
+           ;; note that we currently require the else keyword
+           (cond [(not (equal? condition 'else))
+                  (printf ";; branch condition: ~a~n" condition)
+                  (compile-exp condition state)
+                  (printf "(branch-false ~a)~n" next-branch-label)])
+           (compile-exp-list (cdr branch) state)
+           (printf "(branch ~a)~n" exit-label)
+           (compile-cond (cdr branches) next-branch-label exit-label state))]
         [else (emit-label exit-label)]))
+
+;; compile a list of expressions
+(define (compile-exp-list sexp-list state)
+  (cond [(not (empty? sexp-list))
+         (compile-exp (car sexp-list) state)
+         (compile-exp-list (cdr sexp-list) state)]))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
@@ -169,7 +183,8 @@
               ;; and no generation of continuations
               [(eq? 'define fun) (compile-define (cdr sexp) state)]
               [(eq? 'cond fun) (compile-cond (cdr sexp)
-                                             (next-label state "exit-cond")
+                                             (next-label state "cond")
+                                             (next-label state "condexit")
                                              state)]
               ;; Functions
               [(let ([label (emit-continuation state)])

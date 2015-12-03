@@ -41,12 +41,12 @@ Current features:
     * output to console
     * supported types: int, bool, string
     * store and retrieve variables
+    * conditionals
 
 ## Roadmap, TODOs
 
 ### Language features
 
-    * conditionals
     * local bindings
     * lambdas
     * list functions
