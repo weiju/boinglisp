@@ -9,7 +9,8 @@
 
 ;; currently the only public procedure is
 ;; compile-file
-(provide compile-file compile-exp cstate cstate-string-literal-for)
+(provide compile-file compile-exp cstate cstate-string-literal-for
+         cstate-symbol-for)
 
 ;; ************************************************************************
 ;; **** COMPILER STATE
@@ -22,6 +23,8 @@
 
 (define (cstate-string-literal-for state key)
   (hash-ref (cstate-slitvals state) key))
+(define (cstate-symbol-for state key)
+  (hash-ref (cstate-symbols state) key))
 
 ;; generates a new label and updates the label counter
 (define (next-label state prefix)
@@ -50,30 +53,32 @@
 
 ;; ***********************************************************************
 ;; ***** Code Generation
+;; ***** All emitters should returns lists of s-expressions so we
+;; ***** can uniformly use append
 ;; *********************************
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
-(define (emit-push-param) '(push))
+(define (emit-push-param) '((push)))
 ;; integer literals are treated specially: for most part we assume that
 ;; they fit into a Lisp value (e.g. into a car or cdr of a cons cell)
 ;; so we don't store them in the static data section for now
 (define (emit-fetch-literal spec)
   (cond [(eq? 'string-literal (car spec))
-         (list 'fetch-str-literal (as-literal (cadr spec)))]
-        [else (list 'fetch-int-literal (cadr spec))]))
-(define (emit-fetch-symbol symbol)
-  (printf "(fetch-symbol ~a)~n" symbol))
-(define (emit-fetch-nil) '(fetch-nil))
+         (list (list 'fetch-str-literal (as-literal (cadr spec))))]
+        [else (list (list 'fetch-int-literal (cadr spec)))]))
+(define (emit-fetch-symbol symbol) (list (list 'fetch-symbol symbol)))
+(define (emit-fetch-nil) '((fetch-nil)))
 (define (emit-call fun) (list (list 'lookup-variable fun) '(apply)))
 (define (emit-lookup-variable varname state)
   (let [(sym (find-symbol state varname))]
-    (cond [(not (null? sym)) (list 'lookup-env sym)]
-          [(list 'lookup-variable varname)])))
+    (cond [(not (null? sym)) (list (list 'lookup-env sym))]
+          [(list (list 'lookup-variable varname))])))
 
 (define (emit-println) (list '(push) '(lookup-variable println) '(apply)))
-(define (emit-continuation state label) (list 'push-continuation label))
-(define (emit-label label) (list 'label label))
+(define (emit-continuation state label) (list (list 'push-continuation label)))
+(define (emit-label label) (list (list 'label label)))
+(define (emit-tlenv-bind) '((tl-env-bind)))
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
@@ -101,11 +106,12 @@
     ;;   b. list with at least one identifier (named function)
     (cond [(symbol? bind-target)
            ;; generate space for symbol
-           (compile-exp (cadr define-args) compiler-state)
-           (emit-push-param)
-           (emit-fetch-symbol (register-symbol compiler-state bind-target))
-           (emit-push-param)
-           (printf "(tl-env-bind)~n")]
+           (append
+            (compile-exp (cadr define-args) compiler-state)
+            (emit-push-param)
+            (emit-fetch-symbol (register-symbol compiler-state bind-target))
+            (emit-push-param)
+            (emit-tlenv-bind))]
           [(printf ";; (TODO: handle lambda) bind-target: ~a~n" bind-target)])
     ))
 
@@ -115,7 +121,7 @@
          (let ([arg (last args)])
            (process-args (drop-right args 1) state
                          (append (compile-exp arg state)
-                                 (list (emit-push-param))
+                                 (emit-push-param)
                                  current-out)))]
         [else current-out]))
 
@@ -133,7 +139,6 @@
 (define (register-symbol state symbol)
   (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
            (hash-set! (cstate-symbols state) symlabel symbol)
-           (printf ";; ~a~n" state)
            symlabel))
 
 ;; TODO: optimization: after a branch whose condition is always true
@@ -173,10 +178,10 @@
      (cond [(symbol? sexp)
             ;; TODO: if the variable is in the registered symbols
             ;; replace with a lookup using the symbol reference
-            (list (emit-lookup-variable sexp state))]
+            (emit-lookup-variable sexp state)]
            [else
-            (list (emit-fetch-literal (register-literal state sexp)))])]
-    [(null? sexp) (list (emit-fetch-nil))]
+            (emit-fetch-literal (register-literal state sexp))])]
+    [(null? sexp) (emit-fetch-nil)]
     [else (let ([fun (car sexp)])
             (cond
               ;; Special forms (syntactic forms):
@@ -190,9 +195,9 @@
               ;; Functions
               [else
                (let ([label (next-label state "resume")])
-                 (append (cons (emit-continuation state label)
-                               (process-args (cdr sexp) state '()))
-                         (append (emit-call fun) (list (emit-label label)))))]))]))
+                 (append (append (emit-continuation state label)
+                                 (process-args (cdr sexp) state '())
+                                 (emit-call fun) (emit-label label))))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls

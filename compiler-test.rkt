@@ -24,3 +24,17 @@
                          (label "resume0")) "check print")
   (check-equal? (cstate-string-literal-for mycstate "s0") "hello" "state contains hello"))
 
+;; test for define with a simple value
+(let* ([mycstate (new-compiler-state)]
+       [output (compile-exp '(define a 10) mycstate)])
+  (check-equal? output '((fetch-int-literal 10)
+                         (push)
+                         (fetch-symbol "sym0")
+                         (push)
+                         (tl-env-bind)))
+  (check-equal? (cstate-symbol-for mycstate "sym0") 'a "state contains a"))
+
+;; lookup without an existing top-level binding
+(let* ([mycstate (new-compiler-state)]
+       [output (compile-exp 'a mycstate)])
+  (check-equal? output '((lookup-variable a))))
