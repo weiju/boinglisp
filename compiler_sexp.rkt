@@ -54,7 +54,7 @@
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
-(define (emit-push-param) (printf "(push)~n"))
+(define (emit-push-param) '(push))
 ;; integer literals are treated specially: for most part we assume that
 ;; they fit into a Lisp value (e.g. into a car or cdr of a cons cell)
 ;; so we don't store them in the static data section for now
@@ -65,18 +65,15 @@
 (define (emit-fetch-symbol symbol)
   (printf "(fetch-symbol ~a)~n" symbol))
 (define (emit-fetch-nil) '(fetch-nil))
-(define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
+(define (emit-call fun) (list (list 'lookup-variable fun) '(apply)))
 (define (emit-lookup-variable varname state)
   (let [(sym (find-symbol state varname))]
-    (cond [(not (null? sym)) (printf "(lookup-env ~a)~n" sym)]
-          [(printf "(lookup-variable ~a)~n" varname)])))
+    (cond [(not (null? sym)) (list 'lookup-env sym)]
+          [(list 'lookup-variable varname)])))
 
-(define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
-(define (emit-continuation state)
-  (let ([label (next-label state "resume")])
-    (printf "(push-continuation ~a)~n" label)
-    label))
-(define (emit-label label) (printf "(label ~a)~n" label))
+(define (emit-println) (list '(push) '(lookup-variable println) '(apply)))
+(define (emit-continuation state label) (list 'push-continuation label))
+(define (emit-label label) (list 'label label))
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
@@ -113,12 +110,14 @@
     ))
 
 ;; process function arguments right-to-left
-(define (process-args args state)
+(define (process-args args state current-out)
   (cond [(not (empty? args))
          (let ([arg (last args)])
-           (compile-exp arg state)
-           (emit-push-param))
-         (process-args (drop-right args 1) state)]))
+           (process-args (drop-right args 1) state
+                         (append (compile-exp arg state)
+                                 (list (emit-push-param))
+                                 current-out)))]
+        [else current-out]))
 
 ;; management procedure for literals
 (define (register-literal state literal)
@@ -174,10 +173,10 @@
      (cond [(symbol? sexp)
             ;; TODO: if the variable is in the registered symbols
             ;; replace with a lookup using the symbol reference
-            (emit-lookup-variable sexp state)]
+            (list (emit-lookup-variable sexp state))]
            [else
-            (emit-fetch-literal (register-literal state sexp))])]
-    [(null? sexp) (emit-fetch-nil)]
+            (list (emit-fetch-literal (register-literal state sexp)))])]
+    [(null? sexp) (list (emit-fetch-nil))]
     [else (let ([fun (car sexp)])
             (cond
               ;; Special forms (syntactic forms):
@@ -189,10 +188,11 @@
                                              (next-label state "condexit")
                                              state)]
               ;; Functions
-              [(let ([label (emit-continuation state)])
-                (process-args (cdr sexp) state)
-                (emit-call fun)
-                (emit-label label))]))]))
+              [else
+               (let ([label (next-label state "resume")])
+                 (append (cons (emit-continuation state label)
+                               (process-args (cdr sexp) state '()))
+                         (append (emit-call fun) (list (emit-label label)))))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
