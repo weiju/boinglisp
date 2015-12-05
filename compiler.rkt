@@ -1,6 +1,6 @@
 #lang racket
 ;; This is a small compiler written in Racket that compiles
-;; S-Expressions into 3-address code.
+;; S-Expressions into intermediate code represented.
 ;;
 ;; Implementation will be in 3 steps:
 ;; 1. run in Racket
@@ -9,7 +9,8 @@
 
 ;; currently the only public procedure is
 ;; compile-file
-(provide compile-file)
+(provide compile-file compile-exp cstate cstate-string-literal-for
+         cstate-symbol-for)
 
 ;; ************************************************************************
 ;; **** COMPILER STATE
@@ -19,6 +20,11 @@
 ;; slitvals is a hash table (label -> literal)
 ;; curr-templ current template data item
 (struct cstate (lcount slitvals symbols) #:mutable #:transparent)
+
+(define (cstate-string-literal-for state key)
+  (hash-ref (cstate-slitvals state) key))
+(define (cstate-symbol-for state key)
+  (hash-ref (cstate-symbols state) key))
 
 ;; generates a new label and updates the label counter
 (define (next-label state prefix)
@@ -42,51 +48,50 @@
 ;; ensure we emit the literals with the correct
 ;; representation in intermediate code
 (define (as-literal value)
-  (cond [(string? value) (string-append "\"" value "\"")]
+  (cond [(string? value) (~a value)]
         [else value]))
 
 ;; ***********************************************************************
 ;; ***** Code Generation
+;; ***** All emitters should returns lists of s-expressions so we
+;; ***** can uniformly use append
 ;; *********************************
 ;; emit intermediate code
 ;; we can either emit S-Expressions or a plain format which is easier
 ;; to process by non-lisp languages
-(define (emit-push-param) (printf "(push)~n"))
+(define (emit-push-param) '((push)))
 ;; integer literals are treated specially: for most part we assume that
 ;; they fit into a Lisp value (e.g. into a car or cdr of a cons cell)
 ;; so we don't store them in the static data section for now
 (define (emit-fetch-literal spec)
   (cond [(eq? 'string-literal (car spec))
-         (printf "(fetch-str-literal ~a)~n" (as-literal (cadr spec)))]
-        [else (printf "(fetch-int-literal ~a)~n" (cadr spec))]))
-(define (emit-fetch-symbol symbol)
-  (printf "(fetch-symbol ~a)~n" symbol))
-(define (emit-fetch-nil) (printf "(fetch-nil)~n"))
-(define (emit-call fun) (printf "(lookup-variable ~a)~n(apply)~n" fun))
+         (list (list 'fetch-str-literal (as-literal (cadr spec))))]
+        [else (list (list 'fetch-int-literal (cadr spec)))]))
+(define (emit-fetch-symbol symbol) (list (list 'fetch-symbol symbol)))
+(define (emit-fetch-nil) '((fetch-nil)))
+(define (emit-call fun) (list (list 'lookup-variable fun) '(apply)))
 (define (emit-lookup-variable varname state)
   (let [(sym (find-symbol state varname))]
-    (cond [(not (null? sym)) (printf "(lookup-env ~a)~n" sym)]
-          [(printf "(lookup-variable ~a)~n" varname)])))
+    (cond [(not (null? sym)) (list (list 'lookup-env sym))]
+          [(list (list 'lookup-variable varname))])))
 
-(define (emit-println) (printf "(push)~n(lookup-variable println)~n(apply)~n"))
-(define (emit-continuation state)
-  (let ([label (next-label state "resume")])
-    (printf "(push-continuation ~a)~n" label)
-    label))
-(define (emit-label label) (printf "(label ~a)~n" label))
+(define (emit-println) (list '(push) '(lookup-variable println) '(apply)))
+(define (emit-continuation state label) (list (list 'push-continuation label)))
+(define (emit-label label) (list (list 'label label)))
+(define (emit-tlenv-bind) '((tl-env-bind)))
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
-    (printf ";; literals follow here~n")
-    (hash-for-each sliterals (lambda (key value)
-                               (printf "(string-literal ~a \"~a\")~n" key value)))))
+    (hash-map sliterals (lambda (key value)
+                               (list 'string-literal key value)))))
 
 (define (emit-symbols compiler-state)
   (let [(symbols (cstate-symbols compiler-state))]
-    (printf ";; symbols follow here~n")
-    (hash-for-each symbols (lambda (key value)
-                             (printf "(symbol ~a \"~a\")~n" key value)))))
+    (hash-map symbols (lambda (key value)
+                             (list 'symbol key value)))))
 
+(define (emit-branch-false label) (list (list 'branch-false label)))
+(define (emit-branch label) (list (list 'branch label)))
 
 ;; ***********************************************************************
 ;; ***** Compiler logic
@@ -101,21 +106,23 @@
     ;;   b. list with at least one identifier (named function)
     (cond [(symbol? bind-target)
            ;; generate space for symbol
-           (compile-exp (cadr define-args) compiler-state)
-           (emit-push-param)
-           (emit-fetch-symbol (register-symbol compiler-state bind-target))
-           (emit-push-param)
-           (printf "(tl-env-bind)~n")]
+           (append
+            (compile-exp (cadr define-args) compiler-state)
+            (emit-push-param)
+            (emit-fetch-symbol (register-symbol compiler-state bind-target))
+            (emit-push-param)
+            (emit-tlenv-bind))]
           [(printf ";; (TODO: handle lambda) bind-target: ~a~n" bind-target)])
     ))
 
 ;; process function arguments right-to-left
-(define (process-args args state)
-  (cond [(not (empty? args))
-         (let ([arg (last args)])
-           (compile-exp arg state)
-           (emit-push-param))
-         (process-args (drop-right args 1) state)]))
+(define (process-args args state current-out)
+  (cond [(empty? args) current-out]
+        [else
+         (let ([new-out (append current-out
+                                (compile-exp (last args) state)
+                                (emit-push-param))])
+           (process-args (drop-right args 1) state new-out))]))
 
 ;; management procedure for literals
 (define (register-literal state literal)
@@ -124,7 +131,6 @@
   (cond [(string? literal)
          (let ([litlabel (string-append "s" (~a (hash-count (cstate-slitvals state))))])
            (hash-set! (cstate-slitvals state) litlabel literal)
-           (printf ";; ~a~n" state)
            (list 'string-literal litlabel))]
         [else (list 'int-literal literal)]))
 
@@ -132,7 +138,6 @@
 (define (register-symbol state symbol)
   (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
            (hash-set! (cstate-symbols state) symlabel symbol)
-           (printf ";; ~a~n" state)
            symlabel))
 
 ;; TODO: optimization: after a branch whose condition is always true
@@ -144,25 +149,26 @@
 ;; else skip to next condition label
 (define (compile-cond branches branch-label exit-label state)
   (cond [(not (empty? branches))
-         (emit-label branch-label)
-         (let* ([branch (car branches)]
-                [next-branch-label (next-label state "cond")]
-                [condition (car branch)])
-           ;; note that we currently require the else keyword
-           (cond [(not (equal? condition 'else))
-                  (printf ";; branch condition: ~a~n" condition)
-                  (compile-exp condition state)
-                  (printf "(branch-false ~a)~n" next-branch-label)])
-           (compile-exp-list (cdr branch) state)
-           (printf "(branch ~a)~n" exit-label)
-           (compile-cond (cdr branches) next-branch-label exit-label state))]
+         (append
+          (emit-label branch-label)
+          (let* ([branch (car branches)]
+                 [next-branch-label (next-label state "cond")]
+                 [condition (car branch)])
+            ;; note that we currently require the else keyword
+            (append
+             (cond [(not (equal? condition 'else))
+                    (append (compile-exp condition state) (emit-branch-false next-branch-label))]
+                   [else '()])
+             (compile-exp-list (cdr branch) state '())
+             (emit-branch exit-label)
+             (compile-cond (cdr branches) next-branch-label exit-label state))))]
         [else (emit-label exit-label)]))
 
 ;; compile a list of expressions
-(define (compile-exp-list sexp-list state)
+(define (compile-exp-list sexp-list state out-list)
   (cond [(not (empty? sexp-list))
-         (compile-exp (car sexp-list) state)
-         (compile-exp-list (cdr sexp-list) state)]))
+         (compile-exp-list (cdr sexp-list) state (append (compile-exp (car sexp-list) state) out-list))]
+        [else out-list]))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
@@ -187,10 +193,11 @@
                                              (next-label state "condexit")
                                              state)]
               ;; Functions
-              [(let ([label (emit-continuation state)])
-                (process-args (cdr sexp) state)
-                (emit-call fun)
-                (emit-label label))]))]))
+              [else
+               (let ([label (next-label state "resume")])
+                 (append (append (emit-continuation state label)
+                                 (process-args (cdr sexp) state '())
+                                 (emit-call fun) (emit-label label))))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
@@ -199,22 +206,30 @@
 ;; goes in here as well as the initialized compiler state
 ;; ----------------------------------------------------
 ;; compile an s-expression (top-level)
-(define (compile-stream sexp-num compiler-state in)
+(define (compile-stream sexp-num compiler-state in output-list)
   (let ([sexp (read in)])
     (cond [(eof-object? sexp)
-           (printf "(end-program)~n")
-           (emit-literals compiler-state)
-           (emit-symbols compiler-state)]
+           (append output-list
+                   '((end-program))
+                   (emit-literals compiler-state)
+                   (emit-symbols compiler-state))]
           [else
-           (printf ";; sexp ~a~n" sexp-num)
-           (compile-exp sexp compiler-state)
-           (emit-println)
-           (compile-stream (+ sexp-num 1) compiler-state in)])))
+           (let ([new-output-list (append output-list
+                                          (compile-exp sexp compiler-state)
+                                          (emit-println))])
+             (compile-stream (+ sexp-num 1) compiler-state in new-output-list))])))
 
 ;; compiling a file
+(define (print-il program)
+  (cond [(not (empty? program))
+         (write (car program))
+         (newline)
+         (print-il (cdr program))]))
+
 (define (compile-file filename)
-  (printf ";; compiling file: \"~a\"~n" filename)
-  (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (make-hash) (make-hash))])
-    (compile-stream 1 compiler-state in)
-    (close-input-port in)))
+  (printf ";; compiling file: \"~a\"...~n" filename)
+  (let* ([in (open-input-file filename)]
+        [compiler-state (cstate 0 (make-hash) (make-hash))]
+        [il-program (compile-stream 1 compiler-state in '())])
+    (close-input-port in)
+    (print-il il-program)))

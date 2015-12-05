@@ -1,5 +1,5 @@
 #lang racket
-(require rackunit "compiler_sexp.rkt")
+(require rackunit "compiler.rkt")
 
 ;; Unit tests to test the compiler stage
 ;; helper function to make an initial compiler state
