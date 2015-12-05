@@ -82,15 +82,13 @@
 
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
-    (printf ";; literals follow here~n")
-    (hash-for-each sliterals (lambda (key value)
-                               (printf "(string-literal ~a \"~a\")~n" key value)))))
+    (hash-map sliterals (lambda (key value)
+                               (list 'string-literal key value)))))
 
 (define (emit-symbols compiler-state)
   (let [(symbols (cstate-symbols compiler-state))]
-    (printf ";; symbols follow here~n")
-    (hash-for-each symbols (lambda (key value)
-                             (printf "(symbol ~a \"~a\")~n" key value)))))
+    (hash-map symbols (lambda (key value)
+                             (list 'symbol key value)))))
 
 (define (emit-branch-false label) (list (list 'branch-false label)))
 (define (emit-branch label) (list (list 'branch label)))
@@ -208,22 +206,30 @@
 ;; goes in here as well as the initialized compiler state
 ;; ----------------------------------------------------
 ;; compile an s-expression (top-level)
-(define (compile-stream sexp-num compiler-state in)
+(define (compile-stream sexp-num compiler-state in output-list)
   (let ([sexp (read in)])
     (cond [(eof-object? sexp)
-           (printf "(end-program)~n")
-           (emit-literals compiler-state)
-           (emit-symbols compiler-state)]
+           (append output-list
+                   '((end-program))
+                   (emit-literals compiler-state)
+                   (emit-symbols compiler-state))]
           [else
-           (printf ";; sexp ~a~n" sexp-num)
-           (compile-exp sexp compiler-state)
-           (emit-println)
-           (compile-stream (+ sexp-num 1) compiler-state in)])))
+           (let ([new-output-list (append output-list
+                                          (compile-exp sexp compiler-state)
+                                          (emit-println))])
+             (compile-stream (+ sexp-num 1) compiler-state in new-output-list))])))
 
 ;; compiling a file
+(define (print-il program)
+  (cond [(not (empty? program))
+         (write (car program))
+         (newline)
+         (print-il (cdr program))]))
+
 (define (compile-file filename)
-  (printf ";; compiling file: \"~a\"~n" filename)
-  (let ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (make-hash) (make-hash))])
-    (compile-stream 1 compiler-state in)
-    (close-input-port in)))
+  (printf ";; compiling file: \"~a\"...~n" filename)
+  (let* ([in (open-input-file filename)]
+        [compiler-state (cstate 0 (make-hash) (make-hash))]
+        [il-program (compile-stream 1 compiler-state in '())])
+    (close-input-port in)
+    (print-il il-program)))
