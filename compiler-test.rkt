@@ -38,3 +38,23 @@
 (let* ([mycstate (new-compiler-state)]
        [output (compile-exp 'a mycstate)])
   (check-equal? output '((lookup-variable a))))
+
+;; cond expression
+(let* ([mycstate (new-compiler-state)]
+       [output (compile-exp '(cond  ((= 1 2) 1) (else 2)) mycstate)])
+  (check-equal? output '((label "cond0")
+                         (push-continuation "resume3")
+                         (fetch-int-literal 2)
+                         (push)
+                         (fetch-int-literal 1)
+                         (push)
+                         (lookup-variable =)
+                         (apply)
+                         (label "resume3")
+                         (branch-false "cond2")
+                         (fetch-int-literal 1)
+                         (branch "condexit1")
+                         (label "cond2")
+                         (fetch-int-literal 2)
+                         (branch "condexit1")
+                         (label "condexit1"))))

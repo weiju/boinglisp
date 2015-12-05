@@ -1,6 +1,6 @@
 #lang racket
 ;; This is a small compiler written in Racket that compiles
-;; S-Expressions into 3-address code.
+;; S-Expressions into intermediate code represented.
 ;;
 ;; Implementation will be in 3 steps:
 ;; 1. run in Racket
@@ -92,6 +92,8 @@
     (hash-for-each symbols (lambda (key value)
                              (printf "(symbol ~a \"~a\")~n" key value)))))
 
+(define (emit-branch-false label) (list (list 'branch-false label)))
+(define (emit-branch label) (list (list 'branch label)))
 
 ;; ***********************************************************************
 ;; ***** Compiler logic
@@ -117,13 +119,12 @@
 
 ;; process function arguments right-to-left
 (define (process-args args state current-out)
-  (cond [(not (empty? args))
-         (let ([arg (last args)])
-           (process-args (drop-right args 1) state
-                         (append (compile-exp arg state)
-                                 (emit-push-param)
-                                 current-out)))]
-        [else current-out]))
+  (cond [(empty? args) current-out]
+        [else
+         (let ([new-out (append current-out
+                                (compile-exp (last args) state)
+                                (emit-push-param))])
+           (process-args (drop-right args 1) state new-out))]))
 
 ;; management procedure for literals
 (define (register-literal state literal)
@@ -150,25 +151,26 @@
 ;; else skip to next condition label
 (define (compile-cond branches branch-label exit-label state)
   (cond [(not (empty? branches))
-         (emit-label branch-label)
-         (let* ([branch (car branches)]
-                [next-branch-label (next-label state "cond")]
-                [condition (car branch)])
-           ;; note that we currently require the else keyword
-           (cond [(not (equal? condition 'else))
-                  (printf ";; branch condition: ~a~n" condition)
-                  (compile-exp condition state)
-                  (printf "(branch-false ~a)~n" next-branch-label)])
-           (compile-exp-list (cdr branch) state)
-           (printf "(branch ~a)~n" exit-label)
-           (compile-cond (cdr branches) next-branch-label exit-label state))]
+         (append
+          (emit-label branch-label)
+          (let* ([branch (car branches)]
+                 [next-branch-label (next-label state "cond")]
+                 [condition (car branch)])
+            ;; note that we currently require the else keyword
+            (append
+             (cond [(not (equal? condition 'else))
+                    (append (compile-exp condition state) (emit-branch-false next-branch-label))]
+                   [else '()])
+             (compile-exp-list (cdr branch) state '())
+             (emit-branch exit-label)
+             (compile-cond (cdr branches) next-branch-label exit-label state))))]
         [else (emit-label exit-label)]))
 
 ;; compile a list of expressions
-(define (compile-exp-list sexp-list state)
+(define (compile-exp-list sexp-list state out-list)
   (cond [(not (empty? sexp-list))
-         (compile-exp (car sexp-list) state)
-         (compile-exp-list (cdr sexp-list) state)]))
+         (compile-exp-list (cdr sexp-list) state (append (compile-exp (car sexp-list) state) out-list))]
+        [else out-list]))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
