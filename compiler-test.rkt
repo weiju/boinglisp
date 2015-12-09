@@ -2,8 +2,6 @@
 (require rackunit "compiler.rkt")
 
 ;; Unit tests to test the compiler stage
-;; helper function to make an initial compiler state
-(define (new-compiler-state) (cstate 0 (make-hash) (make-hash)))
 
 ;; tests for self-evaluating
 (check-equal? (compile-exp '() (new-compiler-state)) '((fetch-nil)) "compile empty list")

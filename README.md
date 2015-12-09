@@ -19,15 +19,32 @@ keep it small yet useful enough to write applications.
     * VASM
     * GNU Make
 
-For running test suite:
+For running test suite for backend:
 
     * gcc
 
 ## Run compilation
 
+Currently, this project assumes a single source file that will
+be compiled into a file named `test.asm`:
+
 ```
 racket run_compiler.rkt <source-file> | racket backend.rkt > test.asm
 make
+```
+
+## Run test suite
+
+For the compiler:
+
+```
+racket compiler-test.rkt
+```
+
+For the backend:
+
+```
+make check
 ```
 
 ## Status
@@ -37,6 +54,7 @@ producing working 68k AmigaOS command line applications.
 
 Current features:
 
+    * compiles a single lisp source file to a single 68k assembly file
     * simple integer math
     * output to console
     * supported types: int, bool, string

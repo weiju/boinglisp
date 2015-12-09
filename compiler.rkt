@@ -9,7 +9,9 @@
 
 ;; currently the only public procedure is
 ;; compile-file
-(provide compile-file compile-exp cstate cstate-string-literal-for
+(provide compile-file compile-exp
+         new-compiler-state
+         cstate-string-literal-for
          cstate-symbol-for)
 
 ;; ************************************************************************
@@ -17,14 +19,23 @@
 ;; *************************************
 ;; manage the compile state in this object
 ;; lcount is the current label counter
+;;   there is only one label counter
 ;; slitvals is a hash table (label -> literal)
-;; curr-templ current template data item
-(struct cstate (lcount slitvals symbols) #:mutable #:transparent)
+;; symbols is a hash table (label -> symbol)
+;; local-envs is a list that represents a stack of local environments/scopes
+;;   scope objects help to generate environment offsets in the output
+;;
+;; TODO: curr-templ current template data item
+(struct cstate (lcount slitvals symbols local-envs) #:mutable #:transparent)
+
+(define (new-compiler-state) (cstate 0 (make-hash) (make-hash) '()))
 
 (define (cstate-string-literal-for state key)
   (hash-ref (cstate-slitvals state) key))
 (define (cstate-symbol-for state key)
   (hash-ref (cstate-symbols state) key))
+(define (push-local-env state names)
+  (set-cstate-local-envs! state (cons names (cstate-local-envs state))))
 
 ;; generates a new label and updates the label counter
 (define (next-label state prefix)
@@ -40,6 +51,22 @@
     (cond [(empty? match) '()]
           [(caar match)])))
 
+;; management procedure for literals
+(define (register-literal state literal)
+  ;; allocate a reference and put the reference to the literal
+  ;; into the slots list
+  (cond [(string? literal)
+         (let ([litlabel (string-append "s" (~a (hash-count (cstate-slitvals state))))])
+           (hash-set! (cstate-slitvals state) litlabel literal)
+           (list 'string-literal litlabel))]
+        [else (list 'int-literal literal)]))
+
+;; management procedure for symbols
+(define (register-symbol state symbol)
+  (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
+           (hash-set! (cstate-symbols state) symlabel symbol)
+           symlabel))
+
 ;; ***********************************************************************
 ;; ***** General Helpers
 ;; *********************************
@@ -50,6 +77,8 @@
 (define (as-literal value)
   (cond [(string? value) (~a value)]
         [else value]))
+
+(define (flatmap f lst) (apply append (map f lst)))
 
 ;; ***********************************************************************
 ;; ***** Code Generation
@@ -92,6 +121,7 @@
 
 (define (emit-branch-false label) (list (list 'branch-false label)))
 (define (emit-branch label) (list (list 'branch label)))
+(define (emit-new-local-env num-slots) (list (list 'new-local-env num-slots)))
 
 ;; ***********************************************************************
 ;; ***** Compiler logic
@@ -116,6 +146,7 @@
     ))
 
 ;; process function arguments right-to-left
+;; TODO: can we simplify by using map ??
 (define (process-args args state current-out)
   (cond [(empty? args) current-out]
         [else
@@ -124,21 +155,6 @@
                                 (emit-push-param))])
            (process-args (drop-right args 1) state new-out))]))
 
-;; management procedure for literals
-(define (register-literal state literal)
-  ;; allocate a reference and put the reference to the literal
-  ;; into the slots list
-  (cond [(string? literal)
-         (let ([litlabel (string-append "s" (~a (hash-count (cstate-slitvals state))))])
-           (hash-set! (cstate-slitvals state) litlabel literal)
-           (list 'string-literal litlabel))]
-        [else (list 'int-literal literal)]))
-
-;; management procedure for symbols
-(define (register-symbol state symbol)
-  (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
-           (hash-set! (cstate-symbols state) symlabel symbol)
-           symlabel))
 
 ;; TODO: optimization: after a branch whose condition is always true
 ;; (either else or #t), just stop compiling the rest of the branches
@@ -159,16 +175,32 @@
              (cond [(not (equal? condition 'else))
                     (append (compile-exp condition state) (emit-branch-false next-branch-label))]
                    [else '()])
-             (compile-exp-list (cdr branch) state '())
+             (compile-exp-list (cdr branch) state)
              (emit-branch exit-label)
              (compile-cond (cdr branches) next-branch-label exit-label state))))]
         [else (emit-label exit-label)]))
 
-;; compile a list of expressions
-(define (compile-exp-list sexp-list state out-list)
-  (cond [(not (empty? sexp-list))
-         (compile-exp-list (cdr sexp-list) state (append (compile-exp (car sexp-list) state) out-list))]
-        [else out-list]))
+;; process a single binding
+(define (compile-binding binding state)
+  (let ([varname (car binding)]
+        [sexp (cadr binding)])
+    (append (compile-exp sexp state)
+            (list (list 'bind varname)))))
+
+;; compile a let special form
+(define (compile-let rest state)
+  (let ([bindings (car rest)]
+        [body (cdr rest)])
+    (push-local-env state (map car bindings))
+    (printf ";; bindings: ~a~n" bindings)
+    (printf ";; state: ~a~n" state)
+    (printf ";; body: ~a~n" body)
+    (append (emit-new-local-env (length bindings))
+            (flatmap (lambda (b) (compile-binding b state)) bindings)
+            (compile-exp-list body state))))
+
+(define (compile-exp-list sexps state)
+  (flatmap (lambda (sexp) (compile-exp sexp state)) sexps))
 
 ;; compile expression (recursive)
 ;; cont-count is the counter for continuation labels
@@ -182,22 +214,23 @@
            [else
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]
-    [else (let ([fun (car sexp)])
+    [else (let ([form (car sexp)])
             (cond
               ;; Special forms (syntactic forms):
               ;; different order of processing arguments
               ;; and no generation of continuations
-              [(eq? 'define fun) (compile-define (cdr sexp) state)]
-              [(eq? 'cond fun) (compile-cond (cdr sexp)
+              [(eq? 'define form) (compile-define (cdr sexp) state)]
+              [(eq? 'cond form) (compile-cond (cdr sexp)
                                              (next-label state "cond")
                                              (next-label state "condexit")
                                              state)]
+              [(eq? 'let form) (compile-let (cdr sexp) state)]
               ;; Functions
               [else
                (let ([label (next-label state "resume")])
                  (append (append (emit-continuation state label)
                                  (process-args (cdr sexp) state '())
-                                 (emit-call fun) (emit-label label))))]))]))
+                                 (emit-call form) (emit-label label))))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
@@ -229,7 +262,6 @@
 (define (compile-file filename)
   (printf ";; compiling file: \"~a\"...~n" filename)
   (let* ([in (open-input-file filename)]
-        [compiler-state (cstate 0 (make-hash) (make-hash))]
-        [il-program (compile-stream 1 compiler-state in '())])
+         [il-program (compile-stream 1 (new-compiler-state) in '())])
     (close-input-port in)
     (print-il il-program)))
