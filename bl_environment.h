@@ -28,6 +28,9 @@ struct _bl_toplevel_env {
  */
 struct _bl_local_env {
     struct _bl_local_env *parent;
+    /* This is just a dummy size. The size of entries is determined by the
+       compiler's output and is as large as the number of slots requested */
+    BLWORD entries[1];
 };
 
 /* Top level environment management */

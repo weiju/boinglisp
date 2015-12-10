@@ -12,7 +12,8 @@
 (provide compile-file compile-exp
          new-compiler-state
          cstate-string-literal-for
-         cstate-symbol-for)
+         cstate-symbol-for
+         size-local-env-stack)
 
 ;; ************************************************************************
 ;; **** COMPILER STATE
@@ -44,6 +45,7 @@
                  [else (list pos slot)]))]))
 (define (locals-pos state symbol)
   (locals-pos-priv (cstate-local-envs state) symbol 0))
+(define (size-local-env-stack state) (length (cstate-local-envs state)))
 
 (define (cstate-string-literal-for state key)
   (hash-ref (cstate-slitvals state) key))
@@ -51,6 +53,7 @@
   (hash-ref (cstate-symbols state) key))
 (define (push-local-env state names)
   (set-cstate-local-envs! state (cons names (cstate-local-envs state))))
+(define (pop-local-env state) (set-cstate-local-envs! state (cdr (cstate-local-envs state))))
 
 ;; generates a new label and updates the label counter
 (define (next-label state prefix)
@@ -145,6 +148,7 @@
 (define (emit-branch label) (list (list 'branch label)))
 (define (emit-new-local-env num-slots) (list (list 'new-local-env num-slots)))
 (define (emit-local-lookup env-pos) (list (list 'local-lookup (car env-pos) (cadr env-pos))))
+(define (emit-pop-local-env) '((pop-local-env)))
 
 ;; ***********************************************************************
 ;; ***** Compiler logic
@@ -214,9 +218,12 @@
         [body (cdr rest)])
     (push-local-env state (map car bindings))
     ;;(printf ";; bindings: ~a~n" bindings)
-    (append (emit-new-local-env (length bindings))
+    (let ([result (append (emit-new-local-env (length bindings))
             (flatmap-index (lambda (i binding) (compile-binding i (cadr binding) state)) bindings)
-            (compile-exp-list body state))))
+            (compile-exp-list body state)
+            (emit-pop-local-env))])
+      (pop-local-env state)
+      result)))
 
 (define (compile-exp-list sexps state)
   (flatmap (lambda (sexp) (compile-exp sexp state)) sexps))

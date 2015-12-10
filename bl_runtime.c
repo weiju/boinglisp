@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include "bl_types.h"
 #include "bl_environment.h"
 
@@ -11,6 +12,7 @@
 
 static char *APP_NAME = "Boing Lisp version 0.002 (c) 2015\n";
 static struct _bl_toplevel_env *toplevel_env;
+static struct _bl_local_env *local_envs = NULL;
 
 int bl_init()
 {
@@ -20,6 +22,7 @@ int bl_init()
        2. Allocate an initial page to hold some heap objects
      */
     toplevel_env = bl_new_tl_env();
+    local_envs = NULL;
     return 1;
 }
 
@@ -29,6 +32,7 @@ void bl_cleanup()
        the execution
      */
     if (toplevel_env) bl_free_tl_env(toplevel_env);
+    if (local_envs) free(local_envs);
 }
 
 /*
@@ -230,4 +234,38 @@ BLWORD bl_tlenv_bind(const char *key, BLWORD value)
 BLWORD bl_tlenv_lookup(const char *key)
 {
     return bl_tl_env_get(toplevel_env, key);
+}
+
+void bl_new_local_env(int slots)
+{
+    struct _bl_local_env *result = (struct _bl_local_env *)
+        calloc(1, sizeof(struct _bl_local_env *) + sizeof(BLWORD) * slots);
+    result->parent = local_envs;
+    local_envs = result;
+}
+
+void bl_pop_local_env()
+{
+    /* note that we do not free the space occupied by the environment because
+       we did not figure out garbage collection and closures yet !!!
+       Thus, the environments will currently the main cause of memory leaks
+       in the system.
+    */
+    local_envs = local_envs->parent;
+}
+
+void bl_local_env_bind(int slot, BLWORD value)
+{
+    local_envs->entries[slot] = value;
+}
+
+BLWORD bl_local_env_lookup(int level, int slot)
+{
+    int count = 0;
+    struct _bl_local_env *env = local_envs;
+    while (count < level) {
+        env = env->parent;
+        count++;
+    }
+    return env->entries[slot];
 }

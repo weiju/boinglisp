@@ -8,7 +8,15 @@
  * representing a Lisp value, the low order nibble (4 bits) specify
  * the type
  */
-typedef int BLWORD;
+#ifdef AMIGA
+typedef unsigned int BLWORD;
+#else
+#ifdef __LP64__
+typedef __uint64_t BLWORD;
+#else
+typedef __uint32_t BLWORD;
+#endif
+#endif
 
 /* Fix nums are (machine word width - 1) sized integers with the
    LSB set to 1
@@ -32,7 +40,7 @@ typedef int BLWORD;
 #define BL_EMPTY_LIST   (0x0e)
 
 
-struct HeapObject {};
+/* struct HeapObject {}; */
 
 struct _Continuation {
     struct _Continuation *prev;

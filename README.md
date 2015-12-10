@@ -61,12 +61,12 @@ Current features:
     * supported types: int, bool, string
     * store and retrieve variables (define)
     * conditionals (cond-form)
+    * local bindings (let-form)
 
 ## Roadmap, TODOs
 
 ### Language features
 
-    * local bindings (let-form)
     * lambdas
     * heap-allocation of cons cells
     * garbage collection

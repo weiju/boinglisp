@@ -108,6 +108,22 @@ CHIBI_TEST(Test_rt_not)
     chibi_assert_eq_int(BL_TRUE, bl_not(1, BL_FALSE));
 }
 
+CHIBI_TEST(Test_rt_local_bind_one)
+{
+    bl_new_local_env(1);
+    bl_local_env_bind(0, 13);
+    chibi_assert_eq_int(13, bl_local_env_lookup(0, 0));
+}
+
+CHIBI_TEST(Test_rt_local_bind_two)
+{
+    bl_new_local_env(2);
+    bl_local_env_bind(0, 13);
+    bl_local_env_bind(1, 14);
+    chibi_assert_eq_int(13, bl_local_env_lookup(0, 0));
+    chibi_assert_eq_int(14, bl_local_env_lookup(0, 1));
+}
+
 int main(int argc, char **argv)
 {
     chibi_suite *suite = chibi_suite_new_fixture(rt_setup, rt_teardown, NULL);
@@ -133,6 +149,9 @@ int main(int argc, char **argv)
     chibi_suite_add_test(suite, Test_rt_tlenv_bind_and_lookup);
     chibi_suite_add_test(suite, Test_rt_quote);
     chibi_suite_add_test(suite, Test_rt_not);
+
+    chibi_suite_add_test(suite, Test_rt_local_bind_one);
+    chibi_suite_add_test(suite, Test_rt_local_bind_two);
 
     /* chibi_suite_run_tap(suite, &summary);*/
     chibi_suite_run(suite, &summary);

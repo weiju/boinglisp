@@ -37,7 +37,7 @@
        [output (compile-exp 'a mycstate)])
   (check-equal? output '((lookup-variable a))))
 
-;; cond expression
+;; cond-form
 (let* ([mycstate (new-compiler-state)]
        [output (compile-exp '(cond  ((= 1 2) 1) (else 2)) mycstate)])
   (check-equal? output '((label "cond0")
@@ -56,3 +56,13 @@
                          (fetch-int-literal 2)
                          (branch "condexit1")
                          (label "condexit1"))))
+
+;; simple let-form
+(let* ([mycstate (new-compiler-state)]
+       [output (compile-exp '(let  ([a 1]) a) mycstate)])
+  (check-equal? output '((new-local-env 1)
+                         (fetch-int-literal 1)
+                         (local-env-bind 0)
+                         (local-lookup 0 0)
+                         (pop-local-env)))
+  (check-equal? (size-local-env-stack mycstate) 0 "environment should have been popped off"))
