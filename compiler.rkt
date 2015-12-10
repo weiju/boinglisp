@@ -30,6 +30,21 @@
 
 (define (new-compiler-state) (cstate 0 (make-hash) (make-hash) '()))
 
+;; returns a pair of (environment, slot) indexes for a given
+;; symbol or '()
+(define (find-in-env env symbol index)
+  (cond [(empty? env) -1]
+        [(eq? (car env) symbol) index]
+        [else (find-in-env (cdr env) symbol (+ index 1))]))
+(define (locals-pos-priv env-stack symbol pos)
+  (cond [(empty? env-stack) '()]
+        [else
+         (let ([slot (find-in-env (car env-stack) symbol 0)])
+           (cond [(= slot -1) (locals-pos-priv (cdr env-stack) symbol (+ pos 1))]
+                 [else (list pos slot)]))]))
+(define (locals-pos state symbol)
+  (locals-pos-priv (cstate-local-envs state) symbol 0))
+
 (define (cstate-string-literal-for state key)
   (hash-ref (cstate-slitvals state) key))
 (define (cstate-symbol-for state key)
@@ -79,6 +94,13 @@
         [else value]))
 
 (define (flatmap f lst) (apply append (map f lst)))
+(define (flatmap-index f lst) (apply append (map-index f lst 0)))
+
+;; like map, but expects f to be a function (int, *) -> *
+(define (map-index f lst i)
+  (cond [(empty? lst) lst]
+        [else (cons (f i (car lst)) (map-index f (cdr lst) (+ i 1)))]))
+  
 
 ;; ***********************************************************************
 ;; ***** Code Generation
@@ -122,6 +144,7 @@
 (define (emit-branch-false label) (list (list 'branch-false label)))
 (define (emit-branch label) (list (list 'branch label)))
 (define (emit-new-local-env num-slots) (list (list 'new-local-env num-slots)))
+(define (emit-local-lookup env-pos) (list (list 'local-lookup (car env-pos) (cadr env-pos))))
 
 ;; ***********************************************************************
 ;; ***** Compiler logic
@@ -180,23 +203,19 @@
              (compile-cond (cdr branches) next-branch-label exit-label state))))]
         [else (emit-label exit-label)]))
 
-;; process a single binding
-(define (compile-binding binding state)
-  (let ([varname (car binding)]
-        [sexp (cadr binding)])
-    (append (compile-exp sexp state)
-            (list (list 'bind varname)))))
+;; binds the given expression to the local env slot i
+(define (compile-binding i sexp state)
+  (append (compile-exp sexp state)
+          (list (list 'local-env-bind i))))
 
 ;; compile a let special form
 (define (compile-let rest state)
   (let ([bindings (car rest)]
         [body (cdr rest)])
     (push-local-env state (map car bindings))
-    (printf ";; bindings: ~a~n" bindings)
-    (printf ";; state: ~a~n" state)
-    (printf ";; body: ~a~n" body)
+    ;;(printf ";; bindings: ~a~n" bindings)
     (append (emit-new-local-env (length bindings))
-            (flatmap (lambda (b) (compile-binding b state)) bindings)
+            (flatmap-index (lambda (i binding) (compile-binding i (cadr binding) state)) bindings)
             (compile-exp-list body state))))
 
 (define (compile-exp-list sexps state)
@@ -208,9 +227,10 @@
   (cond
     [(atom? sexp)
      (cond [(symbol? sexp)
-            ;; TODO: if the variable is in the registered symbols
-            ;; replace with a lookup using the symbol reference
-            (emit-lookup-variable sexp state)]
+            ;; local or global lookup ?
+            (let ([env-pos (locals-pos state sexp)])
+              (cond [(empty? env-pos) (emit-lookup-variable sexp state)]
+                    [else (emit-local-lookup env-pos)]))]
            [else
             (emit-fetch-literal (register-literal state sexp))])]
     [(null? sexp) (emit-fetch-nil)]

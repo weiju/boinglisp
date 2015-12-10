@@ -55,20 +55,23 @@ producing working 68k AmigaOS command line applications.
 Current features:
 
     * compiles a single lisp source file to a single 68k assembly file
+    * unit test suite for compiler
     * simple integer math
     * output to console
     * supported types: int, bool, string
-    * store and retrieve variables
-    * conditionals
+    * store and retrieve variables (define)
+    * conditionals (cond-form)
 
 ## Roadmap, TODOs
 
 ### Language features
 
-    * local bindings
+    * local bindings (let-form)
     * lambdas
+    * heap-allocation of cons cells
+    * garbage collection
     * list functions
-    * loop constructs ?
+    * loop form
 
 ### OS support
 
