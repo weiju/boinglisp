@@ -62,6 +62,7 @@
        [output (compile-exp '(let  ([a 1]) a) mycstate)])
   (check-equal? output '((new-local-env 1)
                          (fetch-int-literal 1)
+                         (push)
                          (local-env-bind 0)
                          (local-lookup 0 0)
                          (pop-local-env)))

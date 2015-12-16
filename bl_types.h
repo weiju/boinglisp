@@ -8,7 +8,7 @@
  * representing a Lisp value, the low order nibble (4 bits) specify
  * the type
  */
-#ifdef AMIGA
+#ifdef __VBCC__
 typedef unsigned int BLWORD;
 #else
 #ifdef __LP64__

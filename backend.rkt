@@ -18,6 +18,7 @@
   (printf "\tmoveq\t#0,d0~n")
   (printf "\trts~n"))
 
+;; global environment lookup
 (define (lookup-variable varname)
   (cond [(eq? varname 'quote) (printf "\tlea\t_bl_quote,a0~n")]
         [(eq? varname 'println) (printf "\tlea\t_bl_println,a0~n")]
@@ -30,6 +31,54 @@
         [(eq? varname 'not) (printf "\tlea\t_bl_not,a0~n")]
         ;; TODO: for now only look in tl env
         [else (printf "looking up: ~a~n" varname)]))
+
+;; these branches preserve arg-counts
+(define (translate-instr-preserve-argcount code instr)
+  (cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
+        ;; for a procedure call we push the parameters and then the
+        ;; number of parameters on the stack before we branch
+        ;; to the subroutine.
+        ;; After return we need to add the (4*(number of parameters+1))
+        ;; bytes to the stack pointer to restore the state
+        [(equal? code 'lookup-variable)
+         (let ([varname (cadr instr)])
+           (lookup-variable varname))]
+        ;; string literals
+        [(equal? code 'string-literal)
+         (let ([litname (cadr instr)]
+               [litval (caddr instr)])
+           (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
+        ;; symbols
+        [(equal? code 'symbol)
+         (let ([symlabel (cadr instr)]
+               [symval (caddr instr)])
+           (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" symlabel symval))]
+        [(equal? code 'fetch-str-literal)
+         (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
+        [(equal? code 'fetch-symbol)
+         (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
+        [(equal? code 'fetch-int-literal)
+         (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
+        [(equal? code 'lookup-env)
+         (printf "\tlea\t~a,a0~n\tmove.l\ta0,-(a7)~n\tjsr\t_bl_tlenv_lookup~n\tadd.l\t#4,a7~n"
+                 (cadr instr))]
+        [(equal? code 'end-program)
+         (printf "\tbra\tepilogue~n~n")]
+        [(equal? code 'label)
+         (printf "~a:~n" (cadr instr))]
+        [(equal? code 'branch)
+         (printf "\tbra\t~a~n" (cadr instr))]
+        [(equal? code 'branch-false)
+         (printf "\tcmpi.l\t#6,d0~n\tbeq\t~a~n" (cadr instr))]
+        [(equal? code 'new-local-env)
+         (printf "\tmove.l\t#~a,-(a7)~n\tjsr\t_bl_new_local_env~n\tadd.l\t#4,a7~n"
+                 (cadr instr))]
+        [(equal? code 'pop-local-env)
+         (printf "\tmove.l\td0,-(a7)~n\tjsr\t_bl_pop_local_env~n\tmove.l\t(a7)+,d0~n")]
+        [(equal? code 'local-lookup)
+         (printf "\tmove.l\t#~a,-(a7)~n\tmove.l\t#~a,-(a7)~n\tjsr\t_bl_local_env_lookup~n\tadd.l\t#8,a7~n"
+                 (caddr instr) (cadr instr))]
+        [else (printf "~a~n" instr)]))
 
 (define (translate-instr arg-counts instr)
   (let ([code (car instr)]
@@ -46,51 +95,22 @@
 
           [(equal? code 'tl-env-bind)
            (printf "\tjsr\t_bl_tlenv_bind~n\tadd.l\t#8,a7~n") (cdr arg-counts)]
+
+          ;; there are 2 parameters, 1. the bound expression, 2. the slot
+          [(equal? code 'local-env-bind)
+           (printf "\tmove.l\t#~a,-(a7)~n\tjsr\t_bl_local_env_bind~n\tadd.l\t#8,a7~n"
+                   (cadr instr)) (cdr arg-counts)]
           
+          ;; push-continuation generates a new argument context
           [(equal? code 'push-continuation)
            ;; TODO
            (printf ";; TODO: push-continuation \"~a\"~n" (cadr instr))
            (cons 0 arg-counts)]
-
-          ;; these branches preserve arg-counts
-          [(cond [(equal? code 'fetch-nil) (printf "\tmove.l\t#$0e,d0~n")]
-                 ;; for a procedure call we push the parameters and then the
-                 ;; number of parameters on the stack before we branch
-                 ;; to the subroutine.
-                 ;; After return we need to add the (4*(number of parameters+1))
-                 ;; bytes to the stack pointer to restore the state
-                 [(equal? code 'lookup-variable)
-                  (let ([varname (cadr instr)])
-                    (lookup-variable varname))]
-                 ;; string literals
-                 [(equal? code 'string-literal)
-                  (let ([litname (cadr instr)]
-                        [litval (caddr instr)])
-                    (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" litname litval))]
-                 ;; symbols
-                 [(equal? code 'symbol)
-                  (let ([symlabel (cadr instr)]
-                        [symval (caddr instr)])
-                    (printf "\talign\t2~n~a:\tdc.b\t\"~a\",0~n" symlabel symval))]
-                 
-                 [(equal? code 'fetch-str-literal)
-                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
-                 [(equal? code 'fetch-symbol)
-                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,d0~n" (cadr instr))]
-                 [(equal? code 'fetch-int-literal)
-                  (printf "\tmove.l\t#~a,d0~n\tasl.l\t#1,d0~n\tori.l\t#1,d0~n" (cadr instr))]
-                 [(equal? code 'lookup-env)
-                  (printf "\tlea\t~a,a0~n\tmove.l\ta0,-(a7)~n\tjsr\t_bl_tlenv_lookup~n\tadd.l\t#4,a7~n"
-                          (cadr instr))]
-                 [(equal? code 'end-program)
-                  (printf "\tbra\tepilogue~n~n")]
-                 [(equal? code 'label)
-                  (printf "~a:~n" (cadr instr))]
-                 [(equal? code 'branch)
-                  (printf "\tbra\t~a~n" (cadr instr))]
-                 [(equal? code 'branch-false)
-                  (printf "\tcmpi.l\t#6,d0~n\tbeq\t~a~n" (cadr instr))]
-                 [else (printf "~a~n" instr)]) arg-counts])))
+          ;; instructions that don't affect the argument count
+          [else
+           (printf "\t;; code: ~a, arg-counts: ~a~n" code arg-counts)
+           (translate-instr-preserve-argcount code instr)
+           arg-counts])))
 
 ;; recursively translates the s-expressions coming from the input stream
 ;; and translating to m68k code.

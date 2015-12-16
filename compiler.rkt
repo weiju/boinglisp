@@ -210,6 +210,7 @@
 ;; binds the given expression to the local env slot i
 (define (compile-binding i sexp state)
   (append (compile-exp sexp state)
+          (emit-push-param)
           (list (list 'local-env-bind i))))
 
 ;; compile a let special form
