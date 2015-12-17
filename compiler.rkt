@@ -18,18 +18,27 @@
 ;; ************************************************************************
 ;; **** COMPILER STATE
 ;; *************************************
+
+;; a lambda object within the compiler is held in its original form
+;; so the code can be generated at the if it is referenced at all
+(struct lambda-object (params body))
+
 ;; manage the compile state in this object
 ;; lcount is the current label counter
 ;;   there is only one label counter
 ;; slitvals is a hash table (label -> literal)
 ;; symbols is a hash table (label -> symbol)
+;; lambdas is a hash table (label -> lambda)
 ;; local-envs is a list that represents a stack of local environments/scopes
 ;;   scope objects help to generate environment offsets in the output
-;;
-;; TODO: curr-templ current template data item
-(struct cstate (lcount slitvals symbols local-envs) #:mutable #:transparent)
+(struct cstate (lcount
+                slitvals
+                symbols
+                lambdas
+                local-envs)
+  #:mutable #:transparent)
 
-(define (new-compiler-state) (cstate 0 (make-hash) (make-hash) '()))
+(define (new-compiler-state) (cstate 0 (make-hash) (make-hash) (make-hash) '()))
 
 ;; returns a pair of (environment, slot) indexes for a given
 ;; symbol or '()
@@ -84,6 +93,12 @@
   (let ([symlabel (string-append "sym" (~a (hash-count (cstate-symbols state))))])
            (hash-set! (cstate-symbols state) symlabel symbol)
            symlabel))
+
+;; management procedure for lambdas
+(define (add-lambda state params body)
+  (let ([lambda-label (string-append "lambda" (~a (hash-count (cstate-lambdas state))))])
+    (hash-set! (cstate-lambdas state) lambda-label (lambda-object params body))
+    lambda-label))
 
 ;; ***********************************************************************
 ;; ***** General Helpers
@@ -226,6 +241,10 @@
       (pop-local-env state)
       result)))
 
+(define (compile-lambda params body state)
+  (let ([lambda-label (add-lambda state params body)])
+    (printf ";; LAMBDA params: ~a body: ~a STATE: [~a]~n" params body state) '()))
+
 (define (compile-exp-list sexps state)
   (flatmap (lambda (sexp) (compile-exp sexp state)) sexps))
 
@@ -253,6 +272,8 @@
                                              (next-label state "condexit")
                                              state)]
               [(eq? 'let form) (compile-let (cdr sexp) state)]
+              [(eq? 'lambda form) (compile-lambda (cadr sexp) (cddr sexp) state)]
+
               ;; Functions
               [else
                (let ([label (next-label state "resume")])
