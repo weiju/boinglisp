@@ -65,6 +65,9 @@ Current features:
 
 ## Roadmap, TODOs
 
+- compile a lambda within a let and apply
+  currently yields the wrong result
+
 ### Language features
 
     * lambdas

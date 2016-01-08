@@ -95,9 +95,12 @@
            symlabel))
 
 ;; management procedure for lambdas
+;; TODO: create a closure if we are created within a local scope
 (define (add-lambda state params body)
   (let ([lambda-label (string-append "lambda" (~a (hash-count (cstate-lambdas state))))])
-    (hash-set! (cstate-lambdas state) lambda-label (lambda-object params body))
+    (hash-set! (cstate-lambdas state) lambda-label
+               (lambda-object params (compile-exp-list body state)))
+    (printf ";; STATE: ~a~n" state)
     lambda-label))
 
 ;; ***********************************************************************
@@ -152,12 +155,19 @@
 (define (emit-literals compiler-state)
   (let [(sliterals (cstate-slitvals compiler-state))]
     (hash-map sliterals (lambda (key value)
-                               (list 'string-literal key value)))))
+                          (list 'string-literal key value)))))
 
 (define (emit-symbols compiler-state)
   (let [(symbols (cstate-symbols compiler-state))]
     (hash-map symbols (lambda (key value)
-                             (list 'symbol key value)))))
+                        (list 'symbol key value)))))
+
+(define (emit-lambdas compiler-state)
+  (let [(lambdas (cstate-lambdas compiler-state))]
+    (apply append (hash-map lambdas (lambda (label lobj)
+                                      (append
+                                       (emit-label label)
+                                       (lambda-object-body lobj)))))))
 
 (define (emit-branch-false label) (list (list 'branch-false label)))
 (define (emit-branch label) (list (list 'branch label)))
@@ -243,7 +253,10 @@
 
 (define (compile-lambda params body state)
   (let ([lambda-label (add-lambda state params body)])
-    (printf ";; LAMBDA params: ~a body: ~a STATE: [~a]~n" params body state) '()))
+    (printf ";; LAMBDA params: ~a body: ~a STATE: [~a]~n" params body state) '()
+    ;; assuming the backend knows what to do
+    (list (list 'make-closure lambda-label))
+    ))
 
 (define (compile-exp-list sexps state)
   (flatmap (lambda (sexp) (compile-exp sexp state)) sexps))
@@ -255,6 +268,7 @@
     [(atom? sexp)
      (cond [(symbol? sexp)
             ;; local or global lookup ?
+            ;; TODO: if lambda, we have to check the parameters as well
             (let ([env-pos (locals-pos state sexp)])
               (cond [(empty? env-pos) (emit-lookup-variable sexp state)]
                     [else (emit-local-lookup env-pos)]))]
@@ -279,7 +293,11 @@
                (let ([label (next-label state "resume")])
                  (append (append (emit-continuation state label)
                                  (process-args (cdr sexp) state '())
-                                 (emit-call form) (emit-label label))))]))]))
+                                 (cond [(atom? form) (emit-call form)]
+                                       ;; function is a lambda expression, which needs to be
+                                       ;; compiled into a template and closure
+                                       [else (append (compile-exp form state) '((push) (apply)))])
+                                 (emit-label label))))]))]))
 
 ;; ----------------------------------------------------
 ;; Top-level calls
@@ -294,7 +312,8 @@
            (append output-list
                    '((end-program))
                    (emit-literals compiler-state)
-                   (emit-symbols compiler-state))]
+                   (emit-symbols compiler-state)
+                   (emit-lambdas compiler-state))]
           [else
            (let ([new-output-list (append output-list
                                           (compile-exp sexp compiler-state)

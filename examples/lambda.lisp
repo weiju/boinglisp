@@ -1,1 +1,1 @@
-(lambda (x) (+ x 1) x)
+((lambda (x) (+ x 1)) 2)

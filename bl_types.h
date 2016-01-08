@@ -40,9 +40,23 @@ typedef __uint32_t BLWORD;
 #define BL_EMPTY_LIST   (0x0e)
 
 
+/*
+  Objects on the Heap:
+  The format of the header is inspired by Chicken Scheme, but BoingLisp will
+  support less types for now
+
+  - 24 lower bits specify the size of the object
+  - 4 highest order bits  are for garbage collection
+  - 4 second-highest order bits specify types
+    - 0100: closure
+    - 0010: string
+    - 0011: pair
+    - 0001: symbol
+ */
 /* struct HeapObject {}; */
 
 struct _Continuation {
+    BLWORD header;
     struct _Continuation *prev;
     BLWORD value;
     BLWORD env;
@@ -59,5 +73,13 @@ struct _Environment {
 struct _Template {
     BLWORD code;
 };
+
+/* Closure objects, header xxxx0100 */
+struct _Closure {
+    BLWORD header;
+    void *fun_addr;
+    struct _Environment *env;
+};
+
 
 #endif /* __BL_TYPES_H__ */
