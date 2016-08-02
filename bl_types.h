@@ -11,10 +11,11 @@
 #ifdef __VBCC__
 typedef unsigned int BLWORD;
 #else
+#include <stdint.h>
 #ifdef __LP64__
-typedef __uint64_t BLWORD;
+typedef uint64_t BLWORD;
 #else
-typedef __uint32_t BLWORD;
+typedef uint32_t BLWORD;
 #endif
 #endif
 

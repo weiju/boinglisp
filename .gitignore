@@ -3,6 +3,7 @@
 main
 test
 bl_environment_test
+bl_runtime_test
 test.asm
 compiled
 

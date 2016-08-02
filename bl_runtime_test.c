@@ -2,6 +2,7 @@
 
 #include "chibi.h"
 #include "bl_types.h"
+#include "bl_runtime.h"
 
 void rt_setup(void *userdata)
 {

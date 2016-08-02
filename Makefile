@@ -1,7 +1,8 @@
 ASM_FLAGS = -Fhunk -devpac -I/home/weiju/Development/amigadev/NDK_3.9/Include/include_i
 
 ASM = vasmm68k_mot
-CC = vc +kick13
+CC = vc +kick13 -c99
+GCC_FLAGS = -std=c99 -pedantic
 
 .PHONY : clean check
 .SUFFIXES : .o .asm
@@ -20,7 +21,7 @@ check: bl_environment_test bl_runtime_test
 	./bl_environment_test && ./bl_runtime_test
 
 bl_environment_test: bl_environment_test.c chibi.c bl_environment.c
-	gcc -o $@ $^
+	gcc $(GCC_FLAGS) -o $@ $^
 
 bl_runtime_test: bl_runtime_test.c chibi.c bl_runtime.c bl_environment.c
-	gcc -o $@ $^
+	gcc $(GCC_FLAGS) -o $@ $^
