@@ -1,4 +1,4 @@
-# Boing Lisp
+# Boing Lisp - experimental Lisp compiler system [![Build Status](https://travis-ci.org/weiju/boinglisp.svg)](https://travis-ci.org/weiju/boinglisp)
 
 ## Introduction
 
