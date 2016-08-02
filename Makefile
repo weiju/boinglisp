@@ -7,7 +7,7 @@ GCC_FLAGS = -std=c99 -pedantic
 .PHONY : clean check
 .SUFFIXES : .o .asm
 
-all: test
+all:
 
 .asm.o:
 	$(ASM) $(ASM_FLAGS) -o $@ $<
