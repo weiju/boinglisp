@@ -20,8 +20,8 @@ test: test.o bl_start.o bl_runtime.o bl_environment.o
 check: bl_environment_test bl_runtime_test
 	./bl_environment_test && ./bl_runtime_test
 
-bl_environment_test: bl_environment_test.c chibi.c bl_environment.c
+bl_environment_test: bl_environment_test.c chibi_test/chibi.c bl_environment.c
 	gcc $(GCC_FLAGS) -o $@ $^
 
-bl_runtime_test: bl_runtime_test.c chibi.c bl_runtime.c bl_environment.c
+bl_runtime_test: bl_runtime_test.c chibi_test/chibi.c bl_runtime.c bl_environment.c
 	gcc $(GCC_FLAGS) -o $@ $^

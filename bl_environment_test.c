@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "chibi.h"
+#include "chibi_test/chibi.h"
 #include "bl_environment.h"
 
 CHIBI_TEST(Test_new_tl_env)

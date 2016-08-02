@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "chibi.h"
+#include "chibi_test/chibi.h"
 #include "bl_types.h"
 #include "bl_runtime.h"
 
