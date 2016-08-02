@@ -4,12 +4,15 @@
 
 #include "bl_types.h"
 
+/* System initialization and shutdown */
 extern int bl_init();
 extern void bl_cleanup();
 
+/* I/O */
 extern BLWORD bl_print(int numargs, ...);
 extern BLWORD bl_println(int numargs, ...);
 
+/* simple arithmetics */
 extern BLWORD bl_add(int numargs, ...);
 extern BLWORD bl_sub(int numargs, ...);
 extern BLWORD bl_mul(int numargs, ...);
@@ -17,7 +20,10 @@ extern BLWORD bl_div(int numargs, ...);
 
 extern BLWORD bl_num_eq(int numargs, ...);
 extern BLWORD bl_not(int numargs, ...);
+
 extern BLWORD bl_quote(int numargs, ...);
+
+/* Environment operations */
 extern BLWORD bl_tlenv_bind(const char *key, BLWORD value);
 extern BLWORD bl_tlenv_lookup(const char *key);
 extern void bl_new_local_env(int slots);
